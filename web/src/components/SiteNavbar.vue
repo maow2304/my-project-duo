@@ -1,10 +1,12 @@
 <script setup>
+// แถบนำทางด้านบน (Navbar) - หน้าหลัก/ค้นหา/ตะกร้า/แจ้งเตือน/โปรไฟล์
+// โหลด badge จำนวนสินค้าในตะกร้าและจำนวนแจ้งเตือนที่ยังไม่อ่านเมื่อล็อกอิน
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import { useCartStore } from '../stores/cart'
-import { useNotificationStore } from '../stores/notification'
-import Icon from './Icon.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
+import { useNotificationStore } from '@/stores/notification'
+import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
 const cart = useCartStore()

@@ -1,13 +1,14 @@
 <script setup>
+// หน้าแรก - ภาพรวมสินค้าทั้งหมด + การค้นหา/กรอง/เรียงลำดับ
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { supabase } from '../lib/supabase'
-import SiteNavbar from '../components/SiteNavbar.vue'
-import SiteFooter from '../components/SiteFooter.vue'
-import ProductCard from '../components/ProductCard.vue'
-import EmptyState from '../components/EmptyState.vue'
-import Spinner from '../components/Spinner.vue'
-import Icon from '../components/Icon.vue'
+import { listProducts } from '@/api/products'
+import SiteNavbar from '@/components/SiteNavbar.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
+import ProductCard from '@/components/ProductCard.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import Spinner from '@/components/Spinner.vue'
+import Icon from '@/components/Icon.vue'
 
 const route = useRoute()
 
@@ -21,14 +22,16 @@ const category = ref('ทั้งหมด')
 const sort = ref('newest')
 const maxPriceFilter = ref(null)
 
+// รายการสินค้าที่ผ่านการกรอง/ค้นหา/เรียงลำดับแล้ว
 const filtered = computed(() => {
   let list = [...products.value]
   const q = search.value.trim().toLowerCase()
   if (q) {
-    list = list.filter((p) =>
-      (p.product_name || '').toLowerCase().includes(q) ||
-      (p.category || '').toLowerCase().includes(q) ||
-      (p.description || '').toLowerCase().includes(q)
+    list = list.filter(
+      (p) =>
+        (p.product_name || '').toLowerCase().includes(q) ||
+        (p.category || '').toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q)
     )
   }
   if (category.value !== 'ทั้งหมด') list = list.filter((p) => p.category === category.value)
@@ -40,18 +43,18 @@ const filtered = computed(() => {
   return list
 })
 
+// โหลดสินค้า + หาค่าสูงสุดและรายการหมวดหมู่เพื่อใช้ในตัวกรอง
 async function loadProducts() {
   loading.value = true
-  const { data, error } = await supabase
-    .from('product')
-    .select('*, seller:product_seller_id_fkey(name, places)')
-    .order('product_id', { ascending: true })
-  if (!error) {
-    products.value = data || []
+  try {
+    products.value = await listProducts()
     maxPrice.value = Math.max(0, ...products.value.map((p) => Number(p.price)))
     categories.value = ['ทั้งหมด', ...new Set(products.value.map((p) => p.category).filter(Boolean))]
+  } catch (e) {
+    // แสดงกริดว่าง (filtered ว่าง) ให้ EmptyState จัดการ
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 
 function resetFilters() {
@@ -59,6 +62,7 @@ function resetFilters() {
   maxPriceFilter.value = null
 }
 
+// รับคำค้นหาจาก URL (เช่น มาจากหน้าอื่นส่ง q มา)
 watch(
   () => route.query.q,
   (v) => (search.value = v || ''),

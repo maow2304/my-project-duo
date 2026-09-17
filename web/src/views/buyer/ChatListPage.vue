@@ -1,13 +1,14 @@
 <script setup>
+// รายการแชท (ผู้ซื้อ) - โหลดหัวข้อแชท และเปิดแชทใหม่กับร้านค้าจากหน้ารายละเอียดสินค้า
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../../stores/auth'
-import { useChatStore } from '../../stores/chat'
-import SiteNavbar from '../../components/SiteNavbar.vue'
-import SiteFooter from '../../components/SiteFooter.vue'
-import ChatRoom from '../../components/ChatRoom.vue'
-import EmptyState from '../../components/EmptyState.vue'
-import Icon from '../../components/Icon.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useChatStore } from '@/stores/chat'
+import SiteNavbar from '@/components/SiteNavbar.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
+import ChatRoom from '@/components/ChatRoom.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
 const chat = useChatStore()

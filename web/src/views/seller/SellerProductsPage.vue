@@ -1,40 +1,52 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { supabase } from '../../lib/supabase'
-import { useAuthStore } from '../../stores/auth'
-import { formatTHB } from '../../lib/format'
-import { toast } from '../../lib/toast'
-import EmptyState from '../../components/EmptyState.vue'
-import Spinner from '../../components/Spinner.vue'
-import Icon from '../../components/Icon.vue'
+// หน้าจัดการสินค้าของผู้ขาย - แสดงตารางสินค้า + ลบสินค้าได้ (ยืนยันผ่าน ConfirmDialog)
+import { ref, computed, onMounted } from 'vue'
+import { listProductsBySeller, deleteProduct } from '@/api/products'
+import { useAuthStore } from '@/stores/auth'
+import { formatTHB } from '@/lib/format'
+import { toast } from '@/lib/toast'
+import EmptyState from '@/components/EmptyState.vue'
+import Spinner from '@/components/Spinner.vue'
+import Icon from '@/components/Icon.vue'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const auth = useAuthStore()
 const products = ref([])
 const loading = ref(true)
-const deleting = ref(null)
+const deleting = ref(null) // เก็บสินค้าที่กำลังจะลบ (เปิด dialog ยืนยัน)
+
+// ข้อความยืนยันการลบ (แยกเป็น computed เพื่อไม่ให้ escape quotes ใน template)
+const deleteMessage = computed(() =>
+  deleting.value
+    ? `ต้องการลบ "${deleting.value.product_name}" ออกจากร้านหรือไม่? การลบไม่สามารถย้อนกลับได้`
+    : ''
+)
 
 async function load() {
   loading.value = true
-  const { data, error } = await supabase
-    .from('product')
-    .select('*')
-    .eq('seller_id', auth.user.id)
-    .order('product_id', { ascending: false })
-  if (!error) products.value = data || []
-  loading.value = false
+  try {
+    products.value = await listProductsBySeller(auth.user.id)
+  } catch (e) {
+    products.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
+// ยืนยันลบสินค้า แล้วเอาออกจากตารางทันทีเมื่อสำเร็จ
 async function confirmDelete() {
   if (!deleting.value) return
-  const id = deleting.value
-  const { error } = await supabase.from('product').delete().eq('product_id', id)
-  if (error) {
-    toast('ลบสินค้าไม่สำเร็จ', 'error')
-  } else {
+  const id = deleting.value.product_id
+  try {
+    await deleteProduct(id)
     toast('ลบสินค้าแล้ว')
     products.value = products.value.filter((p) => p.product_id !== id)
+  } catch (e) {
+    toast('ลบสินค้าไม่สำเร็จ', 'error')
+  } finally {
+    deleting.value = null
   }
-  deleting.value = null
 }
 
 onMounted(load)
@@ -42,15 +54,11 @@ onMounted(load)
 
 <template>
   <div>
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h1 class="text-2xl font-bold text-stone-800">จัดการสินค้า</h1>
-        <p class="text-sm text-stone-500">เพิ่ม แก้ไข หรือลบสินค้าของร้านคุณ</p>
-      </div>
+    <PageHeader title="จัดการสินค้า" subtitle="เพิ่ม แก้ไข หรือลบสินค้าของร้านคุณ">
       <RouterLink :to="{ name: 'seller-product-new' }" class="flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
         <Icon name="plus" :size="16" /> เพิ่มสินค้า
       </RouterLink>
-    </div>
+    </PageHeader>
 
     <Spinner v-if="loading" />
     <EmptyState v-else-if="!products.length" icon="bag" title="ยังไม่มีสินค้า" message="กดปุ่มเพิ่มสินค้าเพื่อนำสินค้าของคุณมาลงขาย">
@@ -108,18 +116,13 @@ onMounted(load)
       </div>
     </div>
 
-    <!-- delete confirm -->
-    <div v-if="deleting" class="fixed inset-0 z-50 grid place-items-center bg-black/40 px-4">
-      <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-        <h3 class="text-lg font-bold text-stone-800">ลบสินค้า?</h3>
-        <p class="mt-2 text-sm text-stone-500">
-          ต้องการลบ "<b>{{ deleting.product_name }}</b>" ออกจากร้านหรือไม่? การลบไม่สามารถย้อนกลับได้
-        </p>
-        <div class="mt-5 flex justify-end gap-3">
-          <button class="rounded-full border border-stone-300 px-5 py-2 text-sm text-stone-600 hover:bg-stone-50" @click="deleting = null">ยกเลิก</button>
-          <button class="rounded-full bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700" @click="confirmDelete">ยืนยันการลบ</button>
-        </div>
-      </div>
-    </div>
+    <ConfirmDialog
+      :open="!!deleting"
+      title="ลบสินค้า?"
+      confirm-text="ยืนยันการลบ"
+      :message="deleteMessage"
+      @confirm="confirmDelete"
+      @cancel="deleting = null"
+    />
   </div>
 </template>

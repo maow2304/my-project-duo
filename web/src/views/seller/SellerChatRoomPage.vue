@@ -1,7 +1,8 @@
 <script setup>
+// หน้าห้องแชท (ผู้ขาย) - wrapper ส่ง conversationId จาก route ให้ ChatRoom.vue (ในเลย์เอาต์ผู้ขาย)
 import { useRoute, useRouter } from 'vue-router'
 import SellerLayout from './SellerLayout.vue'
-import ChatRoom from '../../components/ChatRoom.vue'
+import ChatRoom from '@/components/ChatRoom.vue'
 
 const route = useRoute()
 const router = useRouter()

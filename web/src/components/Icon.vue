@@ -1,4 +1,6 @@
 <script setup>
+// ชุดไอคอน SVG ขนาดเล็ก (stroke-based) ใช้แทนไอคอนทั่วทั้งแอป
+// เรียก <Icon name="cart" /> โดย name คือ key ใน paths ด้านล่าง
 const props = defineProps({
   name: { type: String, required: true },
   size: { type: [Number, String], default: 20 },

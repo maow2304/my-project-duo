@@ -1,77 +1,57 @@
+// ============================================================================
+// Chat store (Pinia) - ข้อมูลแชท + สมัคร subscribe ข้อความสด (realtime)
+// งานอ่าน/เขียนตารางผ่าน src/api/chat.js ยกเว้น realtime channel ที่ต้องอยู่กับ state
+// ============================================================================
+
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
+// ใช้ alias (apiListConversations / apiSendMessage) เพราะใน store มี function
+// ชื่อ listConversations / sendMessage เหมือนกัน ถ้า import ชื่อชนจะเรียกตัวมันเอง (infinite recursion)
+import {
+  getOrCreateConversation,
+  listConversations as apiListConversations,
+  listMessages,
+  sendMessage as apiSendMessage,
+} from '@/api/chat'
 
 export const useChatStore = defineStore('chat', () => {
   const conversations = ref([])
   const loaded = ref(false)
-  const messages = ref({})
+  const messages = ref({}) // map: conversationId -> array ข้อความ
 
-  async function getOrCreate({ buyerId, sellerId, productId, productSellerId }) {
-    const effectiveSeller = sellerId || productSellerId
-    if (buyerId === effectiveSeller) return null
-
-    let query = supabase
-      .from('conversations')
-      .select('*')
-      .eq('buyer_id', buyerId)
-      .eq('seller_id', effectiveSeller)
-    query = productId ? query.eq('product_id', productId) : query.is('product_id', null)
-
-    const { data: existing } = await query.maybeSingle()
-
-    if (existing) return existing
-
-    const { data, error } = await supabase
-      .from('conversations')
-      .insert({ buyer_id: buyerId, seller_id: effectiveSeller, product_id: productId || null })
-      .select('*')
-      .single()
-    if (error) throw error
-    return data
+  /** หาหรือสร้างห้องแชท (ดู api/chat.js) - คืน null ถ้าแชทกับตัวเอง */
+  async function getOrCreate(args) {
+    return getOrCreateConversation(args)
   }
 
+  /** โหลดรายการห้องแชทของผู้ใช้ (ทั้งที่เราเป็นผู้ซื้อหรือผู้ขาย) */
   async function listConversations(uid) {
-    const { data, error } = await supabase
-      .from('conversations')
-      .select(
-        '*, buyer:conversations_buyer_id_fkey(username, name, phone), seller:conversations_seller_id_fkey(username, name, places), product:conversations_product_id_fkey(product_id, product_name, price, image, color), last_message:messages(id, content, sent_at, sender_id) order by sent_at desc limit 1'
-      )
-      .or(`buyer_id.eq.${uid},seller_id.eq.${uid}`)
-      .order('created_at', { ascending: false })
-    if (error) throw error
-    conversations.value = data || []
+    conversations.value = await apiListConversations(uid)
     loaded.value = true
     return conversations.value
   }
 
+  /** หาข้อมูลคู่สนทนาจากห้องแชท (คนที่ไม่ได้เป็นเรา) */
   function otherParty(convo, uid) {
     return convo.buyer_id === uid ? convo.seller : convo.buyer
   }
 
+  /** โหลดข้อความหัวข้อตาม conversationId แล้วเก็บไว้ใน state */
   async function loadMessages(conversationId) {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('sent_at', { ascending: true })
-    if (error) throw error
-    messages.value[conversationId] = data || []
+    messages.value[conversationId] = await listMessages(conversationId)
     return messages.value[conversationId]
   }
 
+  /** ส่งข้อความ - บันทึกลง DB และเพิ่มเข้า state ทันที */
   async function sendMessage(conversationId, senderId, content) {
-    const { data, error } = await supabase
-      .from('messages')
-      .insert({ conversation_id: conversationId, sender_id: senderId, content })
-      .select('*')
-      .single()
-    if (error) throw error
+    const saved = await apiSendMessage(conversationId, senderId, content)
     if (!messages.value[conversationId]) messages.value[conversationId] = []
-    messages.value[conversationId].push(data)
-    return data
+    messages.value[conversationId].push(saved)
+    return saved
   }
 
+  /** สมัครฟังข้อความใหม่แบบ realtime และเรียก onNew เมื่อมีข้อความเข้ามา */
   function subscribeToMessages(conversationId, onNew) {
     return supabase
       .channel(`messages-${conversationId}`)
@@ -94,6 +74,7 @@ export const useChatStore = defineStore('chat', () => {
       .subscribe()
   }
 
+  /** ล้าง state เมื่อออกจากระบบ */
   function reset() {
     conversations.value = []
     messages.value = {}

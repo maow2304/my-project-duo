@@ -1,14 +1,17 @@
 <script setup>
+// หน้าตะกร้าสินค้า (ผู้ซื้อ) - ปรับจำนวน/ลบรายการ ใช้ QuantityStepper + CartSummaryCard
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../../stores/auth'
-import { useCartStore } from '../../stores/cart'
-import { formatTHB } from '../../lib/format'
-import { toast } from '../../lib/toast'
-import SiteNavbar from '../../components/SiteNavbar.vue'
-import SiteFooter from '../../components/SiteFooter.vue'
-import EmptyState from '../../components/EmptyState.vue'
-import Icon from '../../components/Icon.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
+import { formatTHB } from '@/lib/format'
+import { toast } from '@/lib/toast'
+import SiteNavbar from '@/components/SiteNavbar.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import Icon from '@/components/Icon.vue'
+import QuantityStepper from '@/components/ui/QuantityStepper.vue'
+import CartSummaryCard from '@/components/ui/CartSummaryCard.vue'
 
 const auth = useAuthStore()
 const cart = useCartStore()
@@ -25,6 +28,19 @@ async function changeQty(item, delta) {
     toast('เกินสต็อกสินค้าที่มีอยู่', 'error')
     return
   }
+  try {
+    await cart.updateQty(item.cart_item_id, next)
+  } catch {
+    toast('อัปเดตไม่สำเร็จ', 'error')
+  }
+}
+
+// เมื่อผู้ใช้พิมพ์จำนวนในช่องตัวเลขโดยตรง (เก็บค่าให้อยู่ในช่วง 1..สต็อก)
+async function onQtyInput(item, value) {
+  if (!item.product) return
+  let next = Math.floor(Number(value))
+  if (!Number.isFinite(next) || next < 1) next = 1
+  if (next > item.product.quantity) next = item.product.quantity
   try {
     await cart.updateQty(item.cart_item_id, next)
   } catch {
@@ -81,11 +97,13 @@ onMounted(() => {
                   <p class="shrink-0 font-semibold text-stone-800">{{ formatTHB(item.price * item.quantity) }}</p>
                 </div>
                 <div class="mt-auto flex items-center justify-between pt-2">
-                  <div class="flex items-center rounded-full border border-stone-200">
-                    <button class="grid h-8 w-8 place-items-center text-stone-500 hover:text-brand-600" @click="changeQty(item, -1)"><Icon name="minus" :size="14" /></button>
-                    <span class="w-10 text-center text-sm font-medium">{{ item.quantity }}</span>
-                    <button class="grid h-8 w-8 place-items-center text-stone-500 hover:text-brand-600" @click="changeQty(item, 1)"><Icon name="plus" :size="14" /></button>
-                  </div>
+                  <QuantityStepper
+                    :model-value="item.quantity"
+                    compact
+                    @dec="changeQty(item, -1)"
+                    @inc="changeQty(item, 1)"
+                    @update:model-value="onQtyInput(item, $event)"
+                  />
                   <button class="flex items-center gap-1 text-xs text-red-500 hover:text-red-700" @click="remove(item)">
                     <Icon name="trash" :size="14" /> ลบ
                   </button>
@@ -98,30 +116,15 @@ onMounted(() => {
           </div>
 
           <!-- summary -->
-          <aside class="h-fit rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-            <h2 class="font-semibold text-stone-800">สรุปยอด</h2>
-            <div class="mt-4 space-y-2 text-sm">
-              <div class="flex justify-between text-stone-500">
-                <span>จำนวนสินค้า</span><span>{{ cart.count }} รายการ</span>
-              </div>
-              <div class="flex justify-between text-stone-500">
-                <span>ค่าส่ง</span><span>นัดรับในมหาวิทยาลัย</span>
-              </div>
-              <div class="flex justify-between border-t border-dashed border-stone-200 pt-3 text-base font-bold text-stone-800">
-                <span>ยอดรวม</span><span class="text-brand-700">{{ formatTHB(cart.total) }}</span>
-              </div>
-            </div>
-            <button
-              :disabled="!cart.items.length || hasStockIssue"
-              class="mt-5 w-full rounded-full bg-brand-600 py-3 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
-              @click="router.push({ name: 'checkout' })"
-            >
-              ดำเนินการสั่งซื้อ
-            </button>
-            <RouterLink :to="{ name: 'home' }" class="mt-3 block text-center text-sm text-stone-500 hover:text-brand-600">
-              ← กลับไปเลือกสินค้าต่อ
-            </RouterLink>
-          </aside>
+          <CartSummaryCard
+            :count="cart.count"
+            :total="cart.total"
+            :disabled="!cart.items.length || hasStockIssue"
+            submit-label="ดำเนินการสั่งซื้อ"
+            back-to="home"
+            back-label="← กลับไปเลือกสินค้าต่อ"
+            @submit="router.push({ name: 'checkout' })"
+          />
         </div>
       </div>
     </main>

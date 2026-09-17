@@ -1,12 +1,13 @@
 <script setup>
+// คอมโพเนนต์ห้องแชท - แสดงข้อความและส่งข้อความได้ (ใช้ทั้งฝั่งผู้ซื้อ/ผู้ขาย)
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import { useChatStore } from '../stores/chat'
-import { supabase } from '../lib/supabase'
-import { formatDate } from '../lib/format'
-import { toast } from '../lib/toast'
-import Icon from './Icon.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useChatStore } from '@/stores/chat'
+import { getConversationById } from '@/api/chat'
+import { supabase } from '@/lib/supabase'
+import { formatDate } from '@/lib/format'
+import { toast } from '@/lib/toast'
+import Icon from '@/components/Icon.vue'
 
 const props = defineProps({
   conversationId: { type: String, required: true },
@@ -15,7 +16,6 @@ const emit = defineEmits(['open'])
 
 const auth = useAuthStore()
 const chat = useChatStore()
-const router = useRouter()
 
 const convo = ref(null)
 const text = ref('')
@@ -24,23 +24,24 @@ const loading = ref(true)
 let channel = null
 const scroller = ref(null)
 
+// คู่สนทนา = คนในห้องที่ไม่ได้เป็นเรา
 const party = computed(() => (convo.value ? chat.otherParty(convo.value, auth.user.id) : null))
 const messages = computed(() => chat.messages[props.conversationId] || [])
 
 async function load() {
   loading.value = true
-  const { data } = await supabase
-    .from('conversations')
-    .select('*, buyer:conversations_buyer_id_fkey(username, name, phone), seller:conversations_seller_id_fkey(username, name, places), product:conversations_product_id_fkey(*)')
-    .eq('id', props.conversationId)
-    .maybeSingle()
-  convo.value = data
+  try {
+    convo.value = await getConversationById(props.conversationId)
+  } catch (e) {
+    convo.value = null
+  }
   await chat.loadMessages(props.conversationId)
   channel = chat.subscribeToMessages(props.conversationId, scrollDown)
   loading.value = false
   scrollDown()
 }
 
+// เลื่อนช่องแชทให้เห็นข้อความล่าสุดเสมอ
 function scrollDown() {
   nextTick(() => {
     if (scroller.value) scroller.value.scrollTop = scroller.value.scrollHeight
@@ -55,13 +56,14 @@ async function send() {
     await chat.sendMessage(props.conversationId, auth.user.id, content)
     text.value = ''
     scrollDown()
-  } catch {
+  } catch (e) {
     toast('ส่งข้อความไม่สำเร็จ', 'error')
   } finally {
     sending.value = false
   }
 }
 
+// Enter = ส่งข้อความ, Shift+Enter = ขึ้นบรรทัดใหม่
 function onKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()

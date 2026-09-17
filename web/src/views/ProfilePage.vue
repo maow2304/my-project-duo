@@ -1,11 +1,12 @@
 <script setup>
+// หน้าโปรไฟล์ (ผู้ซื้อ) - แก้ชื่อ/สถานที่ และสลับไปโหมดผู้ขายได้จากลิงก์ที่นี่
 import { ref, onMounted } from 'vue'
-import { useAuthStore } from '../stores/auth'
-import { useCartStore } from '../stores/cart'
-import { toast } from '../lib/toast'
-import SiteNavbar from '../components/SiteNavbar.vue'
-import SiteFooter from '../components/SiteFooter.vue'
-import Icon from '../components/Icon.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
+import { toast } from '@/lib/toast'
+import SiteNavbar from '@/components/SiteNavbar.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
+import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
 const cart = useCartStore()

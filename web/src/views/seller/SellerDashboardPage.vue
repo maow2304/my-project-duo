@@ -1,11 +1,14 @@
 <script setup>
+// หน้าสรุปภาพรวมร้านค้าของผู้ขาย - สถิติ + ออเดอร์ล่าสุด + เมนูด่วน
 import { ref, computed, onMounted } from 'vue'
-import { supabase } from '../../lib/supabase'
-import { useAuthStore } from '../../stores/auth'
-import { formatTHB, formatDate } from '../../lib/format'
-import StatusBadge from '../../components/StatusBadge.vue'
-import Spinner from '../../components/Spinner.vue'
-import Icon from '../../components/Icon.vue'
+import { listProductsBySeller } from '@/api/products'
+import { listSellerAccessibleOrderItems, listOrdersByIds } from '@/api/orders'
+import { useAuthStore } from '@/stores/auth'
+import { formatTHB, formatDate } from '@/lib/format'
+import StatusBadge from '@/components/StatusBadge.vue'
+import Spinner from '@/components/Spinner.vue'
+import Icon from '@/components/Icon.vue'
+import StatCard from '@/components/ui/StatCard.vue'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -13,32 +16,32 @@ const loading = ref(true)
 const stats = ref({ products: 0, outOfStock: 0, sales: 0, orderCount: 0 })
 const recentOrders = ref([])
 
+// โหลดข้อมูล 3 ส่วนพร้อมกัน: สินค้าของเรา, order_item ที่มองเห็น, คำสังซื้อที่เกี่ยวข้อง
 async function load() {
   loading.value = true
-  const [{ data: products }, { data: orderItems }] = await Promise.all([
-    supabase.from('product').select('product_id, quantity, product_name, price').eq('seller_id', auth.user.id),
-    supabase.from('order_item').select('*, product:order_item_product_id_fkey(seller_id)'),
-  ])
+  try {
+    const [products, orderItems] = await Promise.all([
+      listProductsBySeller(auth.user.id),
+      listSellerAccessibleOrderItems(),
+    ])
 
-  const myItems = (orderItems || []).filter((i) => i.product?.seller_id === auth.user.id)
+    const myItems = orderItems.filter((i) => i.product?.seller_id === auth.user.id)
 
-  stats.value.products = (products || []).length
-  stats.value.outOfStock = (products || []).filter((p) => p.quantity === 0).length
-  stats.value.sales = myItems.reduce((s, i) => s + Number(i.subtotal), 0)
-  stats.value.orderCount = new Set(myItems.map((i) => i.order_id)).size
+    stats.value.products = products.length
+    stats.value.outOfStock = products.filter((p) => p.quantity === 0).length
+    stats.value.sales = myItems.reduce((s, i) => s + Number(i.subtotal), 0)
+    stats.value.orderCount = new Set(myItems.map((i) => i.order_id)).size
 
-  const orderIds = [...new Set(myItems.map((i) => i.order_id))]
-  if (orderIds.length) {
-    const { data } = await supabase
-      .from('orders')
-      .select('order_id, order_date, status, buyer:orders_buyer_id_fkey(name)')
-      .in('order_id', orderIds)
-      .order('order_date', { ascending: false })
-    recentOrders.value = data || []
+    const orderIds = [...new Set(myItems.map((i) => i.order_id))]
+    recentOrders.value = await listOrdersByIds(orderIds)
+  } catch (e) {
+    // ปล่อยให้ค่าเริ่มต้นเป็น 0
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 
+// คำทักทายตามช่วงเวลา
 const greeting = computed(() => {
   const h = new Date().getHours()
   if (h < 12) return 'สวัสดีตอนเช้า'
@@ -60,26 +63,10 @@ onMounted(load)
 
     <template v-else>
       <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div class="rounded-2xl border border-stone-200 bg-white p-5">
-          <span class="grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-600"><Icon name="bag" /></span>
-          <p class="mt-3 text-2xl font-bold text-stone-800">{{ stats.products }}</p>
-          <p class="text-sm text-stone-500">สินค้าทั้งหมด</p>
-        </div>
-        <div class="rounded-2xl border border-stone-200 bg-white p-5">
-          <span class="grid h-10 w-10 place-items-center rounded-xl bg-sky-50 text-sky-600"><Icon name="order" /></span>
-          <p class="mt-3 text-2xl font-bold text-stone-800">{{ stats.orderCount }}</p>
-          <p class="text-sm text-stone-500">คำสั่งซื้อที่เกี่ยวข้อง</p>
-        </div>
-        <div class="rounded-2xl border border-stone-200 bg-white p-5">
-          <span class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><Icon name="chart" /></span>
-          <p class="mt-3 text-2xl font-bold text-brand-700">{{ formatTHB(stats.sales) }}</p>
-          <p class="text-sm text-stone-500">ยอดขายรวม</p>
-        </div>
-        <div class="rounded-2xl border border-stone-200 bg-white p-5">
-          <span class="grid h-10 w-10 place-items-center rounded-xl bg-red-50 text-red-500"><Icon name="alert" /></span>
-          <p class="mt-3 text-2xl font-bold text-stone-800">{{ stats.outOfStock }}</p>
-          <p class="text-sm text-stone-500">สินค้าหมดสต็อก</p>
-        </div>
+        <StatCard icon="bag" icon-class="bg-brand-50 text-brand-600" :value="stats.products" label="สินค้าทั้งหมด" />
+        <StatCard icon="order" icon-class="bg-sky-50 text-sky-600" :value="stats.orderCount" label="คำสั่งซื้อที่เกี่ยวข้อง" />
+        <StatCard icon="chart" icon-class="bg-emerald-50 text-emerald-600" value-class="text-brand-700" :value="formatTHB(stats.sales)" label="ยอดขายรวม" />
+        <StatCard icon="alert" icon-class="bg-red-50 text-red-500" :value="stats.outOfStock" label="สินค้าหมดสต็อก" />
       </div>
 
       <div class="mt-6 grid gap-6 lg:grid-cols-3">

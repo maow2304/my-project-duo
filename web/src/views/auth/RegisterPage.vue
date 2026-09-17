@@ -1,9 +1,10 @@
 <script setup>
+// หน้าสมัครสมาชิก - เลือกบทบาท (ผู้ซื้อ/ผู้ขาย) แล้ว auth.register
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '../../stores/auth'
-import { toast } from '../../lib/toast'
-import Icon from '../../components/Icon.vue'
+import { useAuthStore } from '@/stores/auth'
+import { toast } from '@/lib/toast'
+import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
 const router = useRouter()

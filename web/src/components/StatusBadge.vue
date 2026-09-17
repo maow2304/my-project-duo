@@ -1,14 +1,15 @@
 <script setup>
-import { STATUS_STYLES, STATUS_LABEL } from '../lib/format'
+// แบดจ์แสดงสถานะคำสั่งซื้อ (สี + ข้อความไทยมาจาก lib/constants.js เดียวกัน)
+import { STATUS_STYLES, STATUS_LABEL } from '@/lib/constants'
 
 defineProps({
   status: { type: String, required: true },
 })
 
-const styleMap = function (s) {
+function styleMap(s) {
   return STATUS_STYLES[s] || 'bg-stone-100 text-stone-600 ring-stone-200'
 }
-const labelMap = function (s) {
+function labelMap(s) {
   return STATUS_LABEL[s] || s
 }
 </script>

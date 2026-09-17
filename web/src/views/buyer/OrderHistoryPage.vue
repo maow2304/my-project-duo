@@ -1,26 +1,27 @@
 <script setup>
+// หน้าประวัติการสั่งซื้อของผู้ซื้อ - แสดงรายการคำสั่งซื้อทั้งหมด
 import { ref, onMounted } from 'vue'
-import { supabase } from '../../lib/supabase'
-import { useAuthStore } from '../../stores/auth'
-import { formatTHB, formatDate } from '../../lib/format'
-import SiteNavbar from '../../components/SiteNavbar.vue'
-import SiteFooter from '../../components/SiteFooter.vue'
-import StatusBadge from '../../components/StatusBadge.vue'
-import EmptyState from '../../components/EmptyState.vue'
-import Spinner from '../../components/Spinner.vue'
+import { listBuyerOrders } from '@/api/orders'
+import { useAuthStore } from '@/stores/auth'
+import { formatTHB, formatDate } from '@/lib/format'
+import SiteNavbar from '@/components/SiteNavbar.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import Spinner from '@/components/Spinner.vue'
 
 const auth = useAuthStore()
 const orders = ref([])
 const loading = ref(true)
 
 onMounted(async () => {
-  const { data, error } = await supabase
-    .from('orders')
-    .select('order_id, order_date, total_amount, status')
-    .eq('buyer_id', auth.user.id)
-    .order('order_date', { ascending: false })
-  if (!error) orders.value = data || []
-  loading.value = false
+  try {
+    orders.value = await listBuyerOrders(auth.user.id)
+  } catch (e) {
+    orders.value = []
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 

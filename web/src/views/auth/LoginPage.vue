@@ -1,9 +1,10 @@
 <script setup>
+// หน้าล็อกอิน - ใช้ auth.login กับ Supabase Auth แล้ว redirect กลับไปหน้าต้นทาง
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '../../stores/auth'
-import { toast } from '../../lib/toast'
-import Icon from '../../components/Icon.vue'
+import { useAuthStore } from '@/stores/auth'
+import { toast } from '@/lib/toast'
+import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
 const router = useRouter()

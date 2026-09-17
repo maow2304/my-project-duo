@@ -1,5 +1,12 @@
+// ============================================================================
+// Router ทั้งหมดของแอป พร้อม guard ตรวจสิทธิ์:
+// - requiresAuth  = ต้องล็อกอินก่อนเข้าหน้านั้น
+// - role          = เฉพาะบทบาทที่ระบุ (buyer / seller) เท่านั้น
+// - guestOnly     = หน้าล็อกอิน/สมัคร ยังไงก็ไม่อนุญาตตอนล็อกอินแล้ว
+// ============================================================================
+
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from '@/stores/auth'
 
 const routes = [
   {

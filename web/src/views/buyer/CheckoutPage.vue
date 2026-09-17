@@ -1,15 +1,18 @@
 <script setup>
+// หน้า checkout - ยืนยันคำสั่งซื้อจากตะกร้า
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../../stores/auth'
-import { useCartStore } from '../../stores/cart'
-import { supabase } from '../../lib/supabase'
-import { formatTHB } from '../../lib/format'
-import { toast } from '../../lib/toast'
-import SiteNavbar from '../../components/SiteNavbar.vue'
-import SiteFooter from '../../components/SiteFooter.vue'
-import EmptyState from '../../components/EmptyState.vue'
-import Icon from '../../components/Icon.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
+import { placeOrder } from '@/api/orders'
+import { clearCartItems } from '@/api/cart'
+import { formatTHB } from '@/lib/format'
+import { toast } from '@/lib/toast'
+import SiteNavbar from '@/components/SiteNavbar.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import Icon from '@/components/Icon.vue'
+import CartSummaryCard from '@/components/ui/CartSummaryCard.vue'
 
 const auth = useAuthStore()
 const cart = useCartStore()
@@ -17,13 +20,16 @@ const router = useRouter()
 
 const submitting = ref(false)
 
+// มีสินค้าชิ้นใดในตะกร้าเกินสต็อกหรือไม่
 const hasStockIssue = computed(() =>
   cart.items.some((i) => i.product && i.quantity > i.product.quantity)
 )
 
+// ที่อยู่จัดส่งดึงจากโปรไฟล์ผู้ซื้อ (แก้ไขได้ที่หน้าโปรไฟล์)
 const shippingAddress = computed(() => auth.profile?.address || '')
 
-async function placeOrder() {
+// ยืนยันการสั่งซื้อ: เรียก RPC place_order แล้วล้างตะกร้า
+async function placeOrderHandler() {
   if (!cart.items.length || hasStockIssue.value) {
     toast('กรุณาตรวจสอบรายการในตะกร้า', 'error')
     return
@@ -41,16 +47,8 @@ async function placeOrder() {
       size: i.selected_size || null,
     }))
 
-    const { data: orderId, error: orderError } = await supabase.rpc('place_order', {
-      p_buyer_id: auth.user.id,
-      p_items: itemsPayload,
-    })
-    if (orderError) throw orderError
-
-    await supabase
-      .from('cart_item')
-      .delete()
-      .eq('cart_id', cart.cartId)
+    const orderId = await placeOrder(auth.user.id, itemsPayload)
+    await clearCartItems(cart.cartId)
 
     cart.items = []
     toast('สั่งซื้อสำเร็จ! ระบบแจ้งเตือนผู้ขายแล้ว')
@@ -107,29 +105,17 @@ onMounted(() => {
             </section>
           </div>
 
-          <aside class="h-fit rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 class="font-semibold text-stone-800">สรุปยอด</h2>
-            <div class="mt-4 space-y-2 text-sm">
-              <div class="flex justify-between text-stone-500">
-                <span>จำนวนสินค้า</span><span>{{ cart.count }} รายการ</span>
-              </div>
-              <div class="flex justify-between text-stone-500">
-                <span>ค่าส่ง</span><span>นัดรับในมหาวิทยาลัย</span>
-              </div>
-              <div class="flex justify-between border-t border-dashed border-stone-200 pt-3 text-lg font-bold text-stone-800">
-                <span>ยอดรวม</span><span class="text-brand-700">{{ formatTHB(cart.total) }}</span>
-              </div>
-            </div>
-            <p v-if="hasStockIssue" class="mt-3 rounded-xl bg-red-50 px-4 py-2 text-xs text-red-600">สินค้าบางรายการเกินสต็อก กลับไปแก้ไขที่ตะกร้า</p>
-            <button
-              :disabled="submitting || !cart.items.length || hasStockIssue"
-              class="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-50"
-              @click="placeOrder">
-              <span v-if="submitting" class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-              ยืนยันการสั่งซื้อ
-            </button>
-            <RouterLink :to="{ name: 'cart' }" class="mt-3 block text-center text-sm text-stone-500 hover:text-brand-600">← กลับไปแก้ไขตะกร้า</RouterLink>
-          </aside>
+          <CartSummaryCard
+            :count="cart.count"
+            :total="cart.total"
+            :submitting="submitting"
+            :show-stock-issue="hasStockIssue"
+            :disabled="!cart.items.length || hasStockIssue"
+            submit-label="ยืนยันการสั่งซื้อ"
+            back-to="cart"
+            back-label="← กลับไปแก้ไขตะกร้า"
+            @submit="placeOrderHandler"
+          />
         </div>
       </div>
     </main>

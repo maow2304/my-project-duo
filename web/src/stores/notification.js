@@ -1,24 +1,28 @@
+// ============================================================================
+// Notification store (Pinia) - การแจ้งเตือน + ฟังการแจ้งเตือนใหม่แบบ realtime
+// งานอ่าน/เขียนผ่าน src/api/notifications.js ยกเว้น subscribe channel
+// ============================================================================
+
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
+import { listNotifications, markNotificationRead, markNotificationsRead } from '@/api/notifications'
 
 export const useNotificationStore = defineStore('notification', () => {
   const items = ref([])
   const loaded = ref(false)
   let channel = null
 
+  /** จำนวนที่ยังไม่ได้อ่าน (ใช้คิด badge ที่ Navbar) */
   const unreadCount = computed(() => items.value.filter((n) => !n.is_read).length)
 
+  /** โหลดการแจ้งเตือนทั้งหมดครั้งแรก */
   async function load() {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (error) throw error
-    items.value = data || []
+    items.value = await listNotifications()
     loaded.value = true
   }
 
+  /** สมัครฟัง INSERT/UPDATE การแจ้งเตือนแบบ realtime */
   function subscribe() {
     if (channel) return
     channel = supabase
@@ -41,27 +45,22 @@ export const useNotificationStore = defineStore('notification', () => {
       .subscribe()
   }
 
+  /** อ่านการแจ้งเตือน 1 รายการ (อัปเดต state ให้เป็นอ่านแล้วทันที) */
   async function markRead(id) {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', id)
-    if (!error) {
-      const n = items.value.find((x) => x.id === id)
-      if (n) n.is_read = true
-    }
+    await markNotificationRead(id).catch(() => {})
+    const n = items.value.find((x) => x.id === id)
+    if (n) n.is_read = true
   }
 
+  /** อ่านการแจ้งเตือนทุกอันที่ยังไม่ได้อ่าน */
   async function markAllRead() {
     const ids = items.value.filter((n) => !n.is_read).map((n) => n.id)
     if (!ids.length) return
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .in('id', ids)
-    if (!error) items.value.forEach((n) => (n.is_read = true))
+    await markNotificationsRead(ids).catch(() => {})
+    items.value.forEach((n) => (n.is_read = true))
   }
 
+  /** ล้าง state + ยกเลิก subscribe เมื่อออกจากระบบ */
   function reset() {
     items.value = []
     loaded.value = false

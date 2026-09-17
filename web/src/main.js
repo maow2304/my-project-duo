@@ -1,3 +1,5 @@
+// จุดเริ่มต้นของแอป: สร้าง Vue app + ติดตั้ง Pinia/Router
+// รอให้ auth store โหลด session เสร็จก่อน จึง mount UI (กันหน้าจอสลับตอน reload)
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import './style.css'

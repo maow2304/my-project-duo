@@ -1,12 +1,13 @@
 <script setup>
+// หน้ารายการแจ้งเตือน (ผู้ซื้อ) - โหลดรายการ + กดอ่านทิ้งรายครั้ง/ทีเดียว
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useNotificationStore } from '../stores/notification'
-import { formatDate } from '../lib/format'
-import SiteNavbar from '../components/SiteNavbar.vue'
-import SiteFooter from '../components/SiteFooter.vue'
-import EmptyState from '../components/EmptyState.vue'
-import Icon from '../components/Icon.vue'
+import { useNotificationStore } from '@/stores/notification'
+import { formatDate } from '@/lib/format'
+import SiteNavbar from '@/components/SiteNavbar.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import Icon from '@/components/Icon.vue'
 
 const notif = useNotificationStore()
 const router = useRouter()

@@ -13,12 +13,14 @@
 ```
 web/                      ← Vue app
   src/
+    api/                  ← จุดเดียวที่ติดต่อ Supabase (products, cart, orders, chat, notifications, profile, storage)
     components/           ← components กลาง (Navbar, ProductCard, ChatRoom...)
+      ui/                 ← components UI ใช้ซ้ำ (QuantityStepper, CartSummaryCard, ConfirmDialog, FormInput...)
     views/                ← หน้าเว็บ (auth / buyer / seller)
     stores/               ← Pinia: auth, cart, chat, notification
-    lib/                  ← supabase client, format, toast
+    lib/                  ← supabase client, constants, format, toast
 supabase/migrations/      ← SQL: schema, seed, storage, rpc (รันตามลำดับ)
-docs/                     ← plan.md, สรุปสิ่งที่จะทำ.md
+docs/                     ← plan.md, CONTRIBUTING.md, สรุปสิ่งที่จะทำ.md
 ```
 
 ## วิธีติดตั้ง

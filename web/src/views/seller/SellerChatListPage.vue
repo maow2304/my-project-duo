@@ -1,11 +1,12 @@
 <script setup>
+// รายการแชท (ผู้ขาย) - โหลดเฉพาะแชทของร้านตัวเอง แล้วกดเข้าไปตอบได้
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../../stores/auth'
-import { useChatStore } from '../../stores/chat'
+import { useAuthStore } from '@/stores/auth'
+import { useChatStore } from '@/stores/chat'
 import SellerLayout from './SellerLayout.vue'
-import EmptyState from '../../components/EmptyState.vue'
-import Icon from '../../components/Icon.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
 const chat = useChatStore()

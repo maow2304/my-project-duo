@@ -1,5 +1,6 @@
 <script setup>
-import { toasts, removeToast } from '../lib/toast'
+// วาด toast ที่หน้า App.vue - อ่าน state จาก lib/toast.js แล้วแสดงเป็นก้อนแจ้งเตือน
+import { toasts, removeToast } from '@/lib/toast'
 
 const styles = {
   success: 'bg-emerald-600',

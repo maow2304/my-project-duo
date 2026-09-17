@@ -1,18 +1,23 @@
 <script setup>
+// หน้าคำสั่งซื้อของผู้ขาย - ดูออเดอร์ที่เกี่ยวกับสินค้าของเราและอัปเดตสถานะ
 import { ref, computed, onMounted } from 'vue'
-import { supabase } from '../../lib/supabase'
-import { useAuthStore } from '../../stores/auth'
-import { formatTHB, formatDate, ORDER_STATUSES } from '../../lib/format'
-import { toast } from '../../lib/toast'
-import StatusBadge from '../../components/StatusBadge.vue'
-import Spinner from '../../components/Spinner.vue'
-import EmptyState from '../../components/EmptyState.vue'
+import { listSellerAccessibleOrderItems, updateOrderStatus } from '@/api/orders'
+import { formatTHB, formatDate } from '@/lib/format'
+import { ORDER_STATUSES } from '@/lib/constants'
+import { useAuthStore } from '@/stores/auth'
+import { toast } from '@/lib/toast'
+import StatusBadge from '@/components/StatusBadge.vue'
+import Spinner from '@/components/Spinner.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import OrderItemRow from '@/components/OrderItemRow.vue'
+import PageHeader from '@/components/ui/PageHeader.vue'
 
 const auth = useAuthStore()
 const loading = ref(true)
 const upgrading = ref(null)
 const rawItems = ref([])
 
+// รวม order_item หลายแถวเข้าด้วยกันตาม order_id เพื่อแสดงเป็น 1 ออเดอร์
 const orders = computed(() => {
   const mine = rawItems.value.filter((i) => i.product?.seller_id === auth.user.id)
   const map = new Map()
@@ -32,24 +37,23 @@ const orders = computed(() => {
 
 async function load() {
   loading.value = true
-  const { data, error } = await supabase
-    .from('order_item')
-    .select('*, product:order_item_product_id_fkey(*), orders:order_item_order_id_fkey(buyer:orders_buyer_id_fkey(name))')
-  if (!error) rawItems.value = data || []
-  loading.value = false
+  try {
+    rawItems.value = await listSellerAccessibleOrderItems()
+  } catch (e) {
+    rawItems.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
+// อัปเดตสถานะออเดอร์ (มี trigger แจ้งเตือนผู้ซื้ออัตโนมัติ)
 async function updateStatus(orderId, nextStatus) {
   upgrading.value = orderId
   try {
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: nextStatus })
-      .eq('order_id', orderId)
-    if (error) throw error
+    await updateOrderStatus(orderId, nextStatus)
     toast('อัปเดตสถานะเป็น ' + nextStatus + ' เรียบร้อย และแจ้งเตือนผู้ซื้อแล้ว')
     await load()
-  } catch {
+  } catch (e) {
     toast('อัปเดตสถานะไม่สำเร็จ', 'error')
   } finally {
     upgrading.value = null
@@ -61,10 +65,7 @@ onMounted(load)
 
 <template>
   <div>
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-stone-800">คำสั่งซื้อ</h1>
-      <p class="text-sm text-stone-500">ออเดอร์ที่เกี่ยวข้องกับสินค้าของคุณ และอัปเดตสถานะส่งมอบ</p>
-    </div>
+    <PageHeader title="คำสั่งซื้อ" subtitle="ออเดอร์ที่เกี่ยวข้องกับสินค้าของคุณ และอัปเดตสถานะส่งมอบ" />
 
     <Spinner v-if="loading" />
     <EmptyState v-else-if="!orders.length" icon="order" title="ยังไม่มีคำสั่งซื้อ" message="เมื่อมีลูกค้าสั่งซื้อสินค้าของคุณ จะแสดงที่นี่" />
@@ -81,16 +82,7 @@ onMounted(load)
         </div>
 
         <div class="mt-4 grid gap-2">
-          <div v-for="it in o.items" :key="it.order_item_id" class="flex items-center gap-3 rounded-xl bg-stone-50 px-4 py-2.5">
-            <div class="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">
-              <img v-if="it.product?.image" :src="it.product.image" class="h-full w-full object-cover" />
-            </div>
-            <div class="flex-1">
-              <p class="text-sm font-medium text-stone-700">{{ it.product.product_name }}</p>
-              <p class="text-xs text-stone-400">{{ it.color || 'ไม่ระบุสี' }} · {{ it.size || 'ไม่ระบุไซส์' }} · ×{{ it.quantity }}</p>
-            </div>
-            <p class="text-sm font-medium">{{ formatTHB(it.subtotal) }}</p>
-          </div>
+          <OrderItemRow v-for="it in o.items" :key="it.order_item_id" :item="it" compact />
         </div>
 
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-stone-200 pt-4">

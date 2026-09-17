@@ -1,16 +1,18 @@
 <script setup>
+// หน้ารายละเอียดสินค้า - โชว์รูป/ข้อมูล/เลือกจำนวน แล้วเพิ่มลงตะกร้าหรือเปิดแชทกับผู้ขาย
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { supabase } from '../lib/supabase'
-import { formatTHB } from '../lib/format'
-import { useAuthStore } from '../stores/auth'
-import { useCartStore } from '../stores/cart'
-import { useChatStore } from '../stores/chat'
-import { toast } from '../lib/toast'
-import SiteNavbar from '../components/SiteNavbar.vue'
-import SiteFooter from '../components/SiteFooter.vue'
-import Icon from '../components/Icon.vue'
-import Spinner from '../components/Spinner.vue'
+import { formatTHB } from '@/lib/format'
+import { getProductById } from '@/api/products'
+import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
+import { useChatStore } from '@/stores/chat'
+import { toast } from '@/lib/toast'
+import SiteNavbar from '@/components/SiteNavbar.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
+import Icon from '@/components/Icon.vue'
+import Spinner from '@/components/Spinner.vue'
+import QuantityStepper from '@/components/ui/QuantityStepper.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,6 +25,7 @@ const loading = ref(true)
 const quantity = ref(1)
 const openChatBusy = ref(false)
 
+// สี/ไซส์ของสินค้าชิ้นนี้ (สินค้าแต่ละชิ้นระบุได้เพียงค่าเดียว จึงไม่มีให้เลือกในเพจนี้)
 const selectedColor = computed({
   get: () => (product.value ? product.value.color || '' : ''),
   set: () => {},
@@ -32,24 +35,22 @@ const selectedSize = computed({
   set: () => {},
 })
 
+// ราคารวมตามจำนวนที่เลือก
 const totalPrice = computed(() => (product.value ? Number(product.value.price) * quantity.value : 0))
 
 async function load() {
   loading.value = true
-  const { data, error } = await supabase
-    .from('product')
-    .select('*, seller:product_seller_id_fkey(*)')
-    .eq('product_id', route.params.id)
-    .maybeSingle()
-  if (error || !data) {
-    product.value = null
-  } else {
-    product.value = data
+  try {
+    product.value = await getProductById(route.params.id)
     quantity.value = 1
+  } catch (e) {
+    product.value = null
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 
+// จำกัดจำนวน :ห้ามเกินสต็อกและห้ามต่ำกว่า 1
 function clampQty(n) {
   if (!product.value) return
   const max = product.value.quantity
@@ -57,6 +58,7 @@ function clampQty(n) {
   else if (n < 1) quantity.value = 1
 }
 
+// เพิ่มเข้าตะกร้า (ต้องล็อกอินเป็นผู้ซื้อ และเช็กสต็อกก่อน)
 async function addToCart() {
   if (!auth.isLoggedIn) {
     toast('กรุณาเข้าสู่ระบบก่อนเพิ่มสินค้าลงตะกร้า', 'info')
@@ -84,6 +86,7 @@ async function addToCart() {
   }
 }
 
+// เปิดแชทสอบถามผู้ขาย (ผู้ซื้อเท่านั้น)
 async function openChat() {
   if (!auth.isLoggedIn) {
     router.push({ name: 'login', query: { redirect: route.fullPath } })
@@ -168,17 +171,13 @@ onMounted(load)
               </div>
               <div class="flex items-center gap-3">
                 <span class="w-20 text-sm text-stone-500">จำนวน</span>
-                <div class="flex items-center rounded-full border border-stone-200">
-                  <button class="grid h-9 w-9 place-items-center text-stone-500 hover:text-brand-600" :disabled="product.quantity === 0" @click="clampQty(quantity - 1)">
-                    <Icon name="minus" :size="16" />
-                  </button>
-                  <input v-model.number="quantity" type="number" min="1" :max="product.quantity"
-                    class="h-9 w-14 border-x border-stone-200 text-center text-sm outline-none"
-                    @change="clampQty(quantity)" />
-                  <button class="grid h-9 w-9 place-items-center text-stone-500 hover:text-brand-600" :disabled="product.quantity === 0" @click="clampQty(quantity + 1)">
-                    <Icon name="plus" :size="16" />
-                  </button>
-                </div>
+                <QuantityStepper
+                  :model-value="quantity"
+                  :disabled="product.quantity === 0"
+                  @dec="clampQty(quantity - 1)"
+                  @inc="clampQty(quantity + 1)"
+                  @update:model-value="(v) => clampQty(Number(v))"
+                />
                 <span class="text-sm text-stone-400">= <b class="text-stone-600">{{ formatTHB(totalPrice) }}</b></span>
               </div>
             </div>

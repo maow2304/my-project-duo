@@ -1,9 +1,11 @@
 <script setup>
+// เลย์เอาต์ฝั่งผู้ขาย - sidebar (desktop) + drawer (mobile) + แบดจ์แจ้งเตือนที่ยังไม่อ่าน
+// หน้าในกลุ่ม seller ต้อง root ด้วย SellerLayout นี้
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../../stores/auth'
-import { useNotificationStore } from '../../stores/notification'
-import Icon from '../../components/Icon.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notification'
+import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
 const notif = useNotificationStore()

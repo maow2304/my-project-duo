@@ -1,5 +1,6 @@
 <script setup>
-import { useAuthStore } from '../stores/auth'
+// ส่วนท้ายของหน้าเว็บ (footer) - แสดงชื่อโปรเจค/คณะปี และลิงก์ตามบทบาทผู้ใช้
+import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 
 const auth = useAuthStore()

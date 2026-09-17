@@ -1,6 +1,7 @@
 <script setup>
-import Icon from './Icon.vue'
-import { formatTHB } from '../lib/format'
+// การ์ดสินค้า - คลิกแล้วไปที่หน้ารายละเอียดสินค้า (แสดงรูป ชื่อ ราคา ร้านค้า)
+import Icon from '@/components/Icon.vue'
+import { formatTHB } from '@/lib/format'
 
 const props = defineProps({
   product: { type: Object, required: true },

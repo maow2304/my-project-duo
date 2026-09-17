@@ -1,6 +1,17 @@
+// ============================================================================
+// Cart store (Pinia) - ตะกร้าสินค้าของผู้ซื้อ
+// เตรียมข้อมูล + จัดกลุ่มรายการ และเรียก src/api/cart.js ในการอ่าน/เขียนตาราง
+// ============================================================================
+
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase } from '../lib/supabase'
+import {
+  getOrCreateCart,
+  listCartItems,
+  addCartItem,
+  updateCartItemQuantity,
+  removeCartItem,
+} from '@/api/cart'
 
 export const useCartStore = defineStore('cart', () => {
   const cartId = ref(null)
@@ -8,57 +19,34 @@ export const useCartStore = defineStore('cart', () => {
   const loaded = ref(false)
   const loading = ref(false)
 
+  /** จำนวนชิ้นรวมในตะกร้า (เช่น ซื้อ 2+3 = 5) */
   const count = computed(() => items.value.reduce((s, i) => s + i.quantity, 0))
-  const total = computed(() =>
-    items.value.reduce((s, i) => s + i.quantity * Number(i.price || 0), 0)
-  )
+  /** ยอดรวมเงินทั้งหมดในตะกร้า */
+  const total = computed(() => items.value.reduce((s, i) => s + i.quantity * Number(i.price || 0), 0))
 
+  /** หา cart_id ของผู้ซื้อ (สร้างใหม่ถ้ายังไม่มี) และจดจำไว้ใช้งาน */
   async function ensureCart(buyerId) {
     if (cartId.value) return cartId.value
-    const { data, error } = await supabase
-      .from('cart')
-      .select('cart_id')
-      .eq('buyer_id', buyerId)
-      .maybeSingle()
-    if (error) throw error
-    if (data) {
-      cartId.value = data.cart_id
-      return cartId.value
-    }
-    const { data: created, error: createError } = await supabase
-      .from('cart')
-      .insert({ buyer_id: buyerId })
-      .select('cart_id')
-      .single()
-    if (createError) throw createError
-    cartId.value = created.cart_id
+    cartId.value = await getOrCreateCart(buyerId)
     return cartId.value
   }
 
+  /** โหลดรายการในตะกร้าทั้งหมด (เรียกเมื่อเข้าหน้าที่ต้องใช้ตะกร้า) */
   async function loadCart(buyerId) {
     loading.value = true
     try {
       const id = await ensureCart(buyerId)
-      const { data, error } = await supabase
-        .from('cart_item')
-        .select('cart_item_id, quantity, selected_color, selected_size, product_id, product:cart_item_product_id_fkey(*)')
-        .eq('cart_id', id)
-      if (error) throw error
-      items.value = data.map((i) => ({
-        cart_item_id: i.cart_item_id,
-        quantity: i.quantity,
-        selected_color: i.selected_color,
-        selected_size: i.selected_size,
-        product_id: i.product_id,
-        product: i.product,
-        price: i.product?.price ?? 0,
-      }))
+      items.value = await listCartItems(id)
       loaded.value = true
     } finally {
       loading.value = false
     }
   }
 
+  /**
+   * เพิ่มสินค้าเข้าตะกร้า
+   * หากมีรายการสี/ไซส์เดียวกันอยู่แล้ว ให้รวมจำนวนเข้าไปแทนการเพิ่มแถวใหม่
+   */
   async function addItem(buyerId, { product_id, quantity, color, size }) {
     const id = await ensureCart(buyerId)
     const existing = items.value.find(
@@ -70,37 +58,25 @@ export const useCartStore = defineStore('cart', () => {
     if (existing) {
       await updateQty(existing.cart_item_id, existing.quantity + quantity)
     } else {
-      const { error } = await supabase.from('cart_item').insert({
-        cart_id: id,
-        product_id,
-        quantity,
-        selected_color: color || null,
-        selected_size: size || null,
-      })
-      if (error) throw error
+      await addCartItem({ cartId: id, productId: product_id, quantity, color, size })
       await loadCart(buyerId)
     }
   }
 
+  /** เปลี่ยนจำนวนชิ้นของรายการ 1 บรรทัด (อัปเดต state ทันที) */
   async function updateQty(cartItemId, quantity) {
-    const { error } = await supabase
-      .from('cart_item')
-      .update({ quantity })
-      .eq('cart_item_id', cartItemId)
-    if (error) throw error
+    await updateCartItemQuantity(cartItemId, quantity)
     const it = items.value.find((i) => i.cart_item_id === cartItemId)
     if (it) it.quantity = quantity
   }
 
+  /** ลบสินค้าออกจากตะกร้า */
   async function removeItem(cartItemId) {
-    const { error } = await supabase
-      .from('cart_item')
-      .delete()
-      .eq('cart_item_id', cartItemId)
-    if (error) throw error
+    await removeCartItem(cartItemId)
     items.value = items.value.filter((i) => i.cart_item_id !== cartItemId)
   }
 
+  /** ล้าง state เมื่อล็อกเอาต์/เปลี่ยนผู้ใช้ */
   function reset() {
     cartId.value = null
     items.value = []
