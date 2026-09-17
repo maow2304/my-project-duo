@@ -18,13 +18,23 @@ const cart = useCartStore()
 const router = useRouter()
 
 const hasStockIssue = computed(() =>
-  cart.items.some((i) => i.product && i.quantity > i.product.quantity)
+  cart.items.some((i) => {
+    const stock = i.variant_id ? i.variant?.quantity : i.product?.quantity
+    return stock != null && i.quantity > stock
+  })
 )
+
+// สต็อกที่ใช้คุมจำนวนของแต่ละแถว (variant ก่อน ถ้าไม่มีใช้ยอดรวมสินค้า)
+function stockOf(item) {
+  if (item.variant_id) return item.variant ? Number(item.variant.quantity) : null
+  return item.product ? Number(item.product.quantity) : null
+}
 
 async function changeQty(item, delta) {
   const next = item.quantity + delta
   if (next < 1) return
-  if (item.product && next > item.product.quantity) {
+  const stock = stockOf(item)
+  if (stock != null && next > stock) {
     toast('เกินสต็อกสินค้าที่มีอยู่', 'error')
     return
   }
@@ -40,7 +50,8 @@ async function onQtyInput(item, value) {
   if (!item.product) return
   let next = Math.floor(Number(value))
   if (!Number.isFinite(next) || next < 1) next = 1
-  if (next > item.product.quantity) next = item.product.quantity
+  const stock = stockOf(item)
+  if (stock != null && next > stock) next = stock
   try {
     await cart.updateQty(item.cart_item_id, next)
   } catch {

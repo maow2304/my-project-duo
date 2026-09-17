@@ -4,6 +4,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatTHB, toNumber } from '@/lib/format'
 import { getProductById } from '@/api/products'
+import { listVariantsByProduct } from '@/api/variants'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useChatStore } from '@/stores/chat'
@@ -25,15 +26,29 @@ const loading = ref(true)
 const quantity = ref(1)
 const openChatBusy = ref(false)
 
-// สี/ไซส์ของสินค้าชิ้นนี้ (สินค้าแต่ละชิ้นระบุได้เพียงค่าเดียว จึงไม่มีให้เลือกในเพจนี้)
-const selectedColor = computed({
-  get: () => (product.value ? product.value.color || '' : ''),
-  set: () => {},
+// ตัวเลือกไซส์/สีของสินค้า (variants มีสต็อกแยกกันตามแต่ละแบบ)
+const variants = ref([])
+const selectedSize = ref('')
+const selectedColor = ref('')
+
+// ไซส์ทั้งหมดที่มีในสินค้านี้
+const sizes = computed(() => [...new Set(variants.value.map((v) => v.size))])
+
+// สีของไซส์ที่เลือก (แสดงทุกสีของไซส์นั้น สีที่หมดจะกดไม่ได้)
+const colorsForSize = computed(() => {
+  if (!selectedSize.value) return []
+  return variants.value.filter((v) => v.size === selectedSize.value)
 })
-const selectedSize = computed({
-  get: () => (product.value ? product.value.size || '' : ''),
-  set: () => {},
-})
+
+// variant ที่ผู้ซื้อเลือกอยู่ตอนนี้
+const selectedVariant = computed(
+  () => variants.value.find((v) => v.size === selectedSize.value && v.color === selectedColor.value) || null
+)
+
+// สต็อกสูงสุดที่สั่งได้ (ตาม variant ที่เลือก หรือยอดรวมกรณีสินค้าเก่าไม่มี variants)
+const maxQty = computed(() =>
+  selectedVariant.value ? toNumber(selectedVariant.value.quantity) : toNumber(product.value?.quantity)
+)
 
 // ราคารวมตามจำนวนที่เลือก (ราคาเพี้ยนให้เป็น 0 แทน NaN)
 const totalPrice = computed(() => (product.value ? toNumber(product.value.price) * quantity.value : 0))
@@ -43,19 +58,32 @@ async function load() {
   try {
     product.value = await getProductById(route.params.id)
     quantity.value = 1
+    selectedSize.value = ''
+    selectedColor.value = ''
+    variants.value = product.value
+      ? await listVariantsByProduct(product.value.product_id).catch(() => [])
+      : []
+    // ถ้ามีแบบเดียวให้เลือกให้เลย ไม่ต้องกด
+    if (variants.value.length === 1) {
+      selectedSize.value = variants.value[0].size
+      selectedColor.value = variants.value[0].color
+    }
   } catch (e) {
     product.value = null
+    variants.value = []
   } finally {
     loading.value = false
   }
 }
 
-// จำกัดจำนวน :ห้ามเกินสต็อกและห้ามต่ำกว่า 1
+// จำกัดจำนวน: ห้ามเกินสต็อกของ variant ที่เลือก และห้ามต่ำกว่า 1
 function clampQty(n) {
   if (!product.value) return
-  const max = product.value.quantity
+  if (Number.isNaN(n)) return
+  const max = Math.max(1, maxQty.value)
   if (n > max) quantity.value = max
   else if (n < 1) quantity.value = 1
+  else quantity.value = n
 }
 
 // เพิ่มเข้าตะกร้า (ต้องล็อกอินเป็นผู้ซื้อ และเช็กสต็อกก่อน)
@@ -69,7 +97,12 @@ async function addToCart() {
     toast('บัญชีผู้ขายไม่สามารถซื้อสินค้าได้', 'error')
     return
   }
-  if (product.value.quantity < quantity.value) {
+  // ถ้าสินค้ามีตัวเลือก ต้องเลือกไซส์/สีก่อน
+  if (variants.value.length && !selectedVariant.value) {
+    toast('กรุณาเลือกไซส์และสีก่อนเพิ่มลงตะกร้า', 'error')
+    return
+  }
+  if (quantity.value > maxQty.value) {
     toast('จำนวนสินค้าคงเหลือไม่เพียงพอ', 'error')
     return
   }
@@ -77,8 +110,9 @@ async function addToCart() {
     await cart.addItem(auth.user.id, {
       product_id: product.value.product_id,
       quantity: quantity.value,
-      color: selectedColor.value,
-      size: selectedSize.value,
+      color: selectedVariant.value ? selectedVariant.value.color : product.value.color,
+      size: selectedVariant.value ? selectedVariant.value.size : product.value.size,
+      variant_id: selectedVariant.value ? selectedVariant.value.variant_id : null,
     })
     toast('เพิ่มสินค้าลงตะกร้าแล้ว')
   } catch (e) {
@@ -153,18 +187,54 @@ onMounted(load)
             <p class="mt-3 text-3xl font-bold text-brand-600">{{ formatTHB(product.price) }}</p>
 
             <div class="mt-6 space-y-4">
-              <div class="flex items-center gap-3">
-                <span class="w-20 text-sm text-stone-500">สี</span>
-                <span class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1.5 text-sm text-stone-700">
-                  <span class="h-3.5 w-3.5 rounded-full border border-stone-300" :style="{ backgroundColor: product.color?.toLowerCase() }"></span>
-                  {{ product.color || 'ไม่ระบุ' }}
-                </span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="w-20 text-sm text-stone-500">ไซส์</span>
-                <span class="rounded-full bg-stone-100 px-3 py-1.5 text-sm text-stone-700">{{ product.size || 'ไม่ระบุ' }}</span>
-              </div>
-              <div class="flex items-center gap-3">
+              <!-- สินค้ามีตัวเลือก: ให้ผู้ซื้อกดเลือกไซส์/สีก่อน (สต็อกแยกกันตามแบบ) -->
+              <template v-if="variants.length">
+                <div class="flex items-start gap-3">
+                  <span class="w-20 shrink-0 pt-1.5 text-sm text-stone-500">ไซส์</span>
+                  <div class="flex flex-wrap gap-2">
+                    <button v-for="s in sizes" :key="s" type="button"
+                      class="rounded-full border px-4 py-1.5 text-sm transition"
+                      :class="selectedSize === s ? 'border-brand-600 bg-brand-50 font-semibold text-brand-700' : 'border-stone-200 text-stone-600 hover:border-brand-300'"
+                      @click="selectedSize = s; selectedColor = ''; quantity = 1">
+                      {{ s }}
+                    </button>
+                  </div>
+                </div>
+                <div v-if="selectedSize" class="flex items-start gap-3">
+                  <span class="w-20 shrink-0 pt-1.5 text-sm text-stone-500">สี</span>
+                  <div class="flex flex-wrap gap-2">
+                    <button v-for="v in colorsForSize" :key="v.variant_id" type="button"
+                      :disabled="v.quantity === 0"
+                      class="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-40"
+                      :class="selectedColor === v.color ? 'border-brand-600 bg-brand-50 font-semibold text-brand-700' : 'border-stone-200 text-stone-600 hover:border-brand-300'"
+                      @click="selectedColor = v.color; quantity = 1">
+                      <span class="h-3.5 w-3.5 rounded-full border border-stone-300" :style="{ backgroundColor: String(v.color || '').toLowerCase() }"></span>
+                      {{ v.color }}{{ v.quantity === 0 ? ' (หมด)' : '' }}
+                    </button>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="w-20 text-sm text-stone-500">สต็อก</span>
+                  <span v-if="selectedVariant && selectedVariant.quantity > 0" class="text-sm text-emerald-600">พร้อมส่ง ({{ selectedVariant.quantity }} ชิ้น)</span>
+                  <span v-else-if="selectedVariant" class="text-sm text-red-500">แบบที่เลือกหมดชั่วคราว</span>
+                  <span v-else class="text-sm text-stone-400">กรุณาเลือกไซส์และสีก่อน</span>
+                </div>
+              </template>
+              <!-- สินค้าเก่าไม่มี variants: แสดงค่าเดียวแบบเดิม -->
+              <template v-else>
+                <div class="flex items-center gap-3">
+                  <span class="w-20 text-sm text-stone-500">สี</span>
+                  <span class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1.5 text-sm text-stone-700">
+                    <span class="h-3.5 w-3.5 rounded-full border border-stone-300" :style="{ backgroundColor: String(product.color || '').toLowerCase() }"></span>
+                    {{ product.color || 'ไม่ระบุ' }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="w-20 text-sm text-stone-500">ไซส์</span>
+                  <span class="rounded-full bg-stone-100 px-3 py-1.5 text-sm text-stone-700">{{ product.size || 'ไม่ระบุ' }}</span>
+                </div>
+              </template>
+              <div v-if="!variants.length" class="flex items-center gap-3">
                 <span class="w-20 text-sm text-stone-500">สต็อก</span>
                 <span v-if="product.quantity > 0" class="text-sm text-emerald-600">พร้อมส่ง ({{ product.quantity }} ชิ้น)</span>
                 <span v-else class="text-sm text-red-500">หมดชั่วคราว</span>
@@ -173,7 +243,7 @@ onMounted(load)
                 <span class="w-20 text-sm text-stone-500">จำนวน</span>
                 <QuantityStepper
                   :model-value="quantity"
-                  :disabled="product.quantity === 0"
+                  :disabled="variants.length ? (!selectedVariant || selectedVariant.quantity === 0) : product.quantity === 0"
                   @dec="clampQty(quantity - 1)"
                   @inc="clampQty(quantity + 1)"
                   @update:model-value="(v) => clampQty(Number(v))"
@@ -184,7 +254,7 @@ onMounted(load)
 
             <div class="mt-8 flex flex-col gap-3 sm:flex-row">
               <button
-                :disabled="product.quantity === 0"
+                :disabled="variants.length ? (!selectedVariant || selectedVariant.quantity === 0) : product.quantity === 0"
                 class="flex items-center justify-center gap-2 rounded-full bg-brand-600 px-8 py-3.5 font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                 @click="addToCart">
                 <Icon name="cart" /> เพิ่มลงตะกร้า

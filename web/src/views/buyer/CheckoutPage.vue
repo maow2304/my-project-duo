@@ -20,9 +20,11 @@ const router = useRouter()
 
 const submitting = ref(false)
 
-// มีสินค้าชิ้นใดในตะกร้าเกินสต็อกหรือไม่
+// มีสินค้าชิ้นใดในตะกร้าเกินสต็อกหรือไม่ (ใช้สต็อกของ variant ถ้ามี)
 const hasStockIssue = computed(() =>
-  cart.items.some((i) => i.product && i.quantity > i.product.quantity)
+  cart.items.some((i) =>
+    i.variant_id ? i.variant && i.quantity > i.variant.quantity : i.product && i.quantity > i.product.quantity
+  )
 )
 
 // ที่อยู่จัดส่งดึงจากโปรไฟล์ผู้ซื้อ (แก้ไขได้ที่หน้าโปรไฟล์)
@@ -39,7 +41,13 @@ async function placeOrderHandler() {
     for (const item of cart.items) {
       // กันสินค้าถูกลบไปแล้ว (product เป็น null) ซึ่งปกติจะ TypeError ตรงนี้
       if (!item.product) throw new Error('สินค้าบางรายการอาจถูกลบไปแล้ว กรุณากลับไปจัดการตะกร้า')
-      if (item.quantity > item.product.quantity) throw new Error('สินค้าบางรายการเกินสต็อก')
+      if (item.variant_id) {
+        // กันตัวเลือกถูกลบ/เปลี่ยนจนสต็อกไม่พอ
+        if (!item.variant) throw new Error('ตัวเลือกสินค้าบางรายการอาจถูกลบไปแล้ว กรุณากลับไปจัดการตะกร้า')
+        if (item.quantity > item.variant.quantity) throw new Error('สินค้าบางรายการเกินสต็อก')
+      } else if (item.quantity > item.product.quantity) {
+        throw new Error('สินค้าบางรายการเกินสต็อก')
+      }
     }
 
     const itemsPayload = cart.items.map((i) => ({
@@ -47,6 +55,7 @@ async function placeOrderHandler() {
       quantity: i.quantity,
       color: i.selected_color || null,
       size: i.selected_size || null,
+      variant_id: i.variant_id || null,
     }))
 
     const orderId = await placeOrder(auth.user.id, itemsPayload)

@@ -15,6 +15,8 @@
 - ค่า 2 ตัวจากไฟล์ `web/.env`:
   - `VITE_SUPABASE_URL`
   - `VITE_SUPABASE_ANON_KEY` (สตริงยาวๆ ขึ้นต้น `eyJ...`)
+- รัน migration ใน Supabase ให้ถึง `supabase/migrations/0005_product_variants.sql` ก่อน deploy
+  (ถ้าเว็บมีระบบตัวเลือกไซส์/สีแล้วแต่ฐานข้อมูลยังไม่มีตาราง `product_variant` หน้าเว็บจะพัง)
 
 > หมายเหตุ: `VITE_SUPABASE_ANON_KEY` เป็น **คีย์สาธารณะ** ใช้ฝั่งเว็บอยู่แล้ว ปลอดภัยที่จะใส่ใน Vercel
 > แต่ **ห้ามใช้ `service_role` key เด็ดขาด** เพราะเป็นคีย์ลับที่มีสิทธิ์เต็ม

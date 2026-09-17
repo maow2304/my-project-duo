@@ -49,19 +49,22 @@ export const useCartStore = defineStore('cart', () => {
   /**
    * เพิ่มสินค้าเข้าตะกร้า
    * หากมีรายการสี/ไซส์เดียวกันอยู่แล้ว ให้รวมจำนวนเข้าไปแทนการเพิ่มแถวใหม่
+   * (รายการที่มี variant_id จะรวมกันด้วย variant_id เป็นหลัก)
    */
-  async function addItem(buyerId, { product_id, quantity, color, size }) {
+  async function addItem(buyerId, { product_id, quantity, color, size, variant_id }) {
     const id = await ensureCart(buyerId)
-    const existing = items.value.find(
-      (i) =>
-        i.product_id === product_id &&
-        (i.selected_color || null) === (color || null) &&
-        (i.selected_size || null) === (size || null)
+    const existing = items.value.find((i) =>
+      variant_id
+        ? i.variant_id === variant_id
+        : !i.variant_id &&
+          i.product_id === product_id &&
+          (i.selected_color || null) === (color || null) &&
+          (i.selected_size || null) === (size || null)
     )
     if (existing) {
       await updateQty(existing.cart_item_id, existing.quantity + quantity)
     } else {
-      await addCartItem({ cartId: id, productId: product_id, quantity, color, size })
+      await addCartItem({ cartId: id, productId: product_id, quantity, color, size, variantId: variant_id })
       await loadCart(buyerId)
     }
   }

@@ -11,7 +11,8 @@ import { supabase } from '@/lib/supabase'
  * สั่งซื้อสินค้า - เรียกฟังก์ชัน place_order ในฐานข้อมูล
  * (ฟังก์ชันนี้จะตรวจสต็อก + ตัดสต็อกทีละชิ้น บน RPC ที่ transaction ปลอดภัย)
  * @param {string} buyerId id ผู้ซื้อ
- * @param {Array} items [{ product_id, quantity, color, size }]
+ * @param {Array} items [{ product_id, quantity, color, size, variant_id }]
+ *   (variant_id ใช้ตัดสต็อกแยกตามตัวเลือก ถ้าไม่มีจะใช้สต็อกรวมแบบเดิม)
  * @returns {number} order_id ที่สร้างใหม่
  */
 export async function placeOrder(buyerId, items) {

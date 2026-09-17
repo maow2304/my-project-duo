@@ -37,7 +37,7 @@ export async function getProductById(productId) {
 export async function listProductsBySeller(sellerId) {
   const { data, error } = await supabase
     .from('product')
-    .select('*')
+    .select('*, product_variant(*)')
     .eq('seller_id', sellerId)
     .order('product_id', { ascending: false })
   if (error) throw error
@@ -56,10 +56,15 @@ export async function getProductBySeller(productId, sellerId) {
   return data
 }
 
-/** สร้างสินค้าใหม่ (payload ต้องมี seller_id) */
+/** สร้างสินค้าใหม่ (payload ต้องมี seller_id) คืน product_id ที่สร้าง */
 export async function createProduct(payload) {
-  const { error } = await supabase.from('product').insert(payload)
+  const { data, error } = await supabase
+    .from('product')
+    .insert(payload)
+    .select('product_id')
+    .single()
   if (error) throw error
+  return data.product_id
 }
 
 /** อัปเดตสินค้า (ต้องเป็นของผู้ขายปัจจุบันเท่านั้น ชั้น RLS บังคับ) */

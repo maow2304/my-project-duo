@@ -34,6 +34,13 @@ async function load() {
   }
 }
 
+// สรุปตัวเลือกสินค้าในตาราง (เช่น "2 แบบ · M/Black, L/White")
+function variantSummary(p) {
+  const rows = p.product_variant || []
+  const shown = rows.slice(0, 3).map((v) => `${v.size}/${v.color}`).join(', ')
+  return rows.length > 3 ? `${shown} +${rows.length - 3}` : shown
+}
+
 // ยืนยันลบสินค้า แล้วเอาออกจากตารางทันทีเมื่อสำเร็จ
 async function confirmDelete() {
   if (!deleting.value) return
@@ -87,7 +94,10 @@ onMounted(load)
                   </div>
                   <div>
                     <p class="font-medium text-stone-700">{{ p.product_name }}</p>
-                    <p class="text-xs text-stone-400">{{ p.color || 'ไม่ระบุสี' }} · {{ p.size || 'ไม่ระบุไซส์' }}</p>
+                    <p v-if="p.product_variant?.length" class="text-xs text-stone-400">
+                      {{ p.product_variant.length }} แบบ · {{ variantSummary(p) }}
+                    </p>
+                    <p v-else class="text-xs text-stone-400">{{ p.color || 'ไม่ระบุสี' }} · {{ p.size || 'ไม่ระบุไซส์' }}</p>
                   </div>
                 </div>
               </td>

@@ -29,13 +29,13 @@ export async function getOrCreateCart(buyerId) {
 }
 
 /**
- * ดึงรายการในตะกร้า (พร้อมข้อมูลสินค้าเต็ม)
+ * ดึงรายการในตะกร้า (พร้อมข้อมูลสินค้าเต็ม + variant ที่เลือก)
  * คืนค่าเป็น array ที่แบนรายการออกแล้ว เช่น price ถูกดึงออกจาก nested product
  */
 export async function listCartItems(cartId) {
   const { data, error } = await supabase
     .from('cart_item')
-    .select('cart_item_id, quantity, selected_color, selected_size, product_id, product:cart_item_product_id_fkey(*)')
+    .select('cart_item_id, quantity, selected_color, selected_size, variant_id, product_id, product:cart_item_product_id_fkey(*), variant:cart_item_variant_id_fkey(*)')
     .eq('cart_id', cartId)
   if (error) throw error
   return (data || []).map((i) => ({
@@ -43,6 +43,8 @@ export async function listCartItems(cartId) {
     quantity: i.quantity,
     selected_color: i.selected_color,
     selected_size: i.selected_size,
+    variant_id: i.variant_id,
+    variant: i.variant,
     product_id: i.product_id,
     product: i.product,
     price: i.product?.price ?? 0,
@@ -50,13 +52,14 @@ export async function listCartItems(cartId) {
 }
 
 /** เพิ่มสินค้าใหม่เข้าตะกร้า (ถ้าซื้อสี/ไซส์เดิมอีก ให้เพิ่มบรรทัดใหม่ที่ layer store) */
-export async function addCartItem({ cartId, productId, quantity, color, size }) {
+export async function addCartItem({ cartId, productId, quantity, color, size, variantId }) {
   const { error } = await supabase.from('cart_item').insert({
     cart_id: cartId,
     product_id: productId,
     quantity,
     selected_color: color || null,
     selected_size: size || null,
+    variant_id: variantId || null,
   })
   if (error) throw error
 }
