@@ -19,6 +19,8 @@ const emit = defineEmits(['update:modelValue', 'update:uploading'])
 const fileInput = ref(null)
 const previewUrl = ref(props.modelValue)
 const uploading = ref(false)
+// error จากการอัปโหลดครั้งล่าสุด (ค้างโชว์ใต้ช่อง ไม่หายแบบ toast)
+const uploadError = ref('')
 
 // เมื่อค่าจากภายนอกเปลี่ยน (เช่น โหลดสินค้าเดิมตอนแก้ไข) ให้อัปเดตพรีวิวตาม
 watch(
@@ -38,13 +40,16 @@ function setUploading(v) {
 async function onFile(ev) {
   const file = ev.target.files?.[0]
   if (!file) return
+  uploadError.value = ''
   // กันไฟล์ที่ไม่ใช่รูป / ใหญ่เกิน ก่อนยิงอัปโหลด
   if (!file.type.startsWith('image/')) {
+    uploadError.value = 'กรุณาเลือกไฟล์รูปภาพเท่านั้น'
     toast('กรุณาเลือกไฟล์รูปภาพเท่านั้น', 'error')
     ev.target.value = ''
     return
   }
   if (file.size > props.maxSizeMB * 1024 * 1024) {
+    uploadError.value = `รูปใหญ่เกินไป (สูงสุด ${props.maxSizeMB}MB)`
     toast(`รูปใหญ่เกินไป (สูงสุด ${props.maxSizeMB}MB)`, 'error')
     ev.target.value = ''
     return
@@ -58,8 +63,11 @@ async function onFile(ev) {
     }
     emit('update:modelValue', url)
     previewUrl.value = url
+    uploadError.value = ''
     toast('อัปโหลดรูปภาพสำเร็จ')
   } catch (e) {
+    // ค้างข้อความไว้ใต้ช่อง เพราะถ้ารูปไม่ขึ้นจะกดบันทึกไม่ผ่านอยู่ดี
+    uploadError.value = 'อัปโหลดรูปไม่สำเร็จ ตรวจสอบว่า bucket "product-images" ถูกสร้างแล้ว'
     toast('อัปโหลดรูปไม่สำเร็จ ตรวจสอบว่าสร้าง bucket "product-images" แล้ว', 'error')
   } finally {
     setUploading(false)
@@ -93,7 +101,7 @@ async function onFile(ev) {
         <p class="mt-2 text-xs text-stone-400">
           รองรับ JPG/PNG สูงสุด {{ maxSizeMB }}MB บันทึกลง Supabase Storage (bucket: product-images)<br />หากยังไม่สร้าง bucket ให้สร้างใน Dashboard → Storage
         </p>
-        <p v-if="error" class="mt-1 text-xs text-red-500">{{ error }}</p>
+        <p v-if="error || uploadError" class="mt-1 text-xs text-red-500">{{ error || uploadError }}</p>
       </div>
       <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onFile" />
     </div>
