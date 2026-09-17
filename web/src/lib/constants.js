@@ -32,7 +32,7 @@ export const STATUS_STYLES = {
 export const PRODUCT_CATEGORIES = ['เสื้อผ้า', 'รองเท้า', 'กระเป๋า', 'เครื่องประดับ', 'กีฬา']
 
 /** ไซส์ที่แนะนำ (แสดงใน datalist ของฟอร์มสินค้า) */
-export const PRODUCT_SIZES = ['S', 'M', 'L', 'XL', '42', 'Free']
+export const PRODUCT_SIZES = ['S', 'M', 'L', 'XL', 'XXL']
 
 /** สีที่แนะนำ (แสดงใน datalist ของฟอร์มสินค้า) */
 export const PRODUCT_COLORS = ['Black', 'White', 'Blue', 'Gray', 'Khaki', 'Navy']
