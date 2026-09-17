@@ -60,6 +60,19 @@ npm run preview
 
 ---
 
+## Deploy / ให้คนอื่นเทส
+
+วิธีที่ง่ายสุดคือ deploy ขึ้น **Vercel** (ฟรี) แล้วแชร์ลิงก์ให้เพื่อนเปิดเทส
+
+- Root Directory = `web` (โค้ดเว็บอยู่ในโฟลเดอร์นี้)
+- ใส่ Environment Variables 2 ตัว: `VITE_SUPABASE_URL` และ `VITE_SUPABASE_ANON_KEY` (ค่าอยู่ใน `web/.env`)
+- ไฟล์ `web/vercel.json` ตั้ง build + SPA fallback ไว้ให้แล้ว
+
+> ขั้นตอนแบบละเอียดทีละคลิก พร้อมวิธีตั้งค่า Supabase URL และบัญชีทดลอง ดูที่ [`docs/deploy.md`](docs/deploy.md)
+> ลิงก์เว็บจริง: `<your-app>.vercel.app` (เติมหลัง deploy เสร็จ)
+
+---
+
 ## บัญชีทดลอง (จาก seed)
 
 | ประเภท | อีเมล | รหัสผ่าน |
@@ -91,3 +104,6 @@ Admin, ชำระเงินจริง, จัดส่ง/ติดตา�
 
 - `docs/plan.md` — แผนพัฒนา 8 เฟส + checklist
 - `docs/สรุปสิ่งที่จะทำ.md` — สรุปฉบับสั้น
+- `docs/deploy.md` — วิธี deploy ขึ้น Vercel + แชร์ให้คนอื่นเทส
+- `docs/validation.md` — กฎการตรวจช่องกรอก + การกันข้อมูลผิดรูป
+- `docs/CONTRIBUTING.md` — แนวทางการเขียนโค้ดในโปรเจกต์
