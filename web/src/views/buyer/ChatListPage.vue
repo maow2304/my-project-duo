@@ -51,7 +51,7 @@ onMounted(() => chat.listConversations(auth.user.id).catch(() => {}))
                 <p class="truncate text-sm font-medium text-stone-700">{{ chat.otherParty(c, auth.user.id)?.name }}</p>
                 <p class="truncate text-xs text-stone-400">{{ c.last_message?.content || 'เริ่มสนทนา' }}</p>
               </div>
-              <span v-if="c.product" class="shrink-0 text-xs text-stone-400">{{ c.product.product_name }}</span>
+              <span v-if="c.product" class="shrink-0 text-xs text-stone-400">{{ c.product.product_name || 'สินค้า' }}</span>
             </button>
           </aside>
 

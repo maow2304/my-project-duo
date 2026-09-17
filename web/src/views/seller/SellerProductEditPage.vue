@@ -5,6 +5,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProductBySeller, createProduct, updateProduct } from '@/api/products'
 import { PRODUCT_CATEGORIES, PRODUCT_SIZES, PRODUCT_COLORS } from '@/lib/constants'
+import { isValidPrice, isNonNegativeInt } from '@/lib/validators'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from '@/lib/toast'
 import Icon from '@/components/Icon.vue'
@@ -20,6 +21,8 @@ const auth = useAuthStore()
 const isEdit = computed(() => !!route.params.id)
 const loading = ref(!!route.params.id)
 const saving = ref(false)
+// ข้อความ error รายช่อง (แสดงใต้ input ที่เกี่ยวข้อง) - ล้างทุกครั้งที่พิมพ์
+const errors = ref({})
 
 const form = ref({
   product_name: '',
@@ -57,10 +60,44 @@ async function load() {
   }
 }
 
+// ตรวจรูปแบบข้อมูลก่อนบันทึก; คืน error รายช่อง (ช่องไหนผ่าน = เป็น "")
+function validate() {
+  const errs = {}
+  const name = form.value.product_name.trim()
+  const price = String(form.value.price).trim()
+  const quantity = String(form.value.quantity).trim()
+
+  // ชื่อสินค้า: ต้องมี ไม่ยาวเกิน และไม่ขึ้นต้นด้วยเว้นวรรค
+  if (!name) errs.product_name = 'กรุณากรอกชื่อสินค้า'
+  else if (name.length > 100) errs.product_name = 'ชื่อสินค้าต้องไม่เกิน 100 ตัวอักษร'
+
+  // ราคา: ตัวเลขเท่านั้น ไม่ติดลบ ทศนิยมไม่เกิน 2 ตำแหน่ง (กัน abc/e/เครื่องหมาย)
+  if (!price) errs.price = 'กรุณากรอกราคา'
+  else if (!isValidPrice(price)) errs.price = 'ราคาต้องเป็นตัวเลข เช่น 250 หรือ 250.50 เท่านั้น'
+  else if (Number(price) > 9999999) errs.price = 'ราคาสูงเกินไป'
+
+  // จำนวน: เลขเต็มไม่ติดลบเท่านั้น (กัน abc/ทศนิยม/ลบ)
+  if (!quantity) errs.quantity = 'กรุณากรอกจำนวน'
+  else if (!isNonNegativeInt(quantity)) errs.quantity = 'จำนวนต้องเป็นเลขจำนวนเต็มไม่ติดลบ เช่น 5'
+  else if (Number(quantity) > 999999) errs.quantity = 'จำนวนสูงเกินไป'
+
+  // หมวดหมู่/ไซส์/สี: ว่างได้แต่จำกัดความยาว
+  if (form.value.category.trim().length > 50) errs.category = 'หมวดหมู่ไม่เกิน 50 ตัวอักษร'
+  if (form.value.size.trim().length > 50) errs.size = 'ไซส์ไม่เกิน 50 ตัวอักษร'
+  if (form.value.color.trim().length > 50) errs.color = 'สีไม่เกิน 50 ตัวอักษร'
+
+  // รายละเอียด: ว่างได้แต่จำกัดความยาว
+  if (form.value.description.trim().length > 2000) errs.description = 'รายละเอียดไม่เกิน 2000 ตัวอักษร'
+
+  return errs
+}
+
 // บันทึกฟอร์ม: เพิ่มสินค้าใหม่ หรืออัปเดตสินค้าเดิม
 async function save() {
-  if (!form.value.product_name.trim() || !form.value.price || !form.value.quantity) {
-    toast('กรุณากรอกชื่อ ราคา และจำนวนสินค้า', 'error')
+  const errs = validate()
+  errors.value = errs
+  if (Object.values(errs).some(Boolean)) {
+    toast('กรุณาแก้ไขช่องที่มีเครื่องหมายสีแดง', 'error')
     return
   }
   saving.value = true
@@ -103,21 +140,21 @@ onMounted(load)
       <PageHeader :title="isEdit ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'" :subtitle="'กรอกข้อมูลสินค้าที่ต้องการ' + (isEdit ? 'แก้ไข' : 'ลงขาย')" />
     </div>
 
-    <form v-if="!loading" class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6" @submit.prevent="save">
+    <form v-if="!loading" class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6" @input="errors = {}" @submit.prevent="save">
       <ImageUploader v-model="form.image" :owner-id="auth.user.id" />
 
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="sm:col-span-2">
-          <FormInput v-model="form.product_name" name="product-name" label="ชื่อสินค้า" required />
+          <FormInput v-model="form.product_name" name="product-name" label="ชื่อสินค้า" required maxlength="100" :error="errors.product_name" />
         </div>
-        <FormInput v-model="form.price" name="price" label="ราคา (บาท)" type="number" min="0" step="0.01" required />
-        <FormInput v-model="form.quantity" name="quantity" label="จำนวน (สต็อก)" type="number" min="0" required />
-        <FormInput v-model="form.category" name="category" label="หมวดหมู่" placeholder="เช่น เสื้อผ้า" :suggestions="PRODUCT_CATEGORIES" />
-        <FormInput v-model="form.size" name="size" label="ไซส์" placeholder="เช่น M" :suggestions="PRODUCT_SIZES" />
-        <FormInput v-model="form.color" name="color" label="สี" placeholder="เช่น Black" :suggestions="PRODUCT_COLORS" />
+        <FormInput v-model="form.price" name="price" label="ราคา (บาท)" type="number" min="0" step="0.01" maxlength="9" required :error="errors.price" />
+        <FormInput v-model="form.quantity" name="quantity" label="จำนวน (สต็อก)" type="number" min="0" maxlength="6" required :error="errors.quantity" />
+        <FormInput v-model="form.category" name="category" label="หมวดหมู่" placeholder="เช่น เสื้อผ้า" maxlength="50" :suggestions="PRODUCT_CATEGORIES" :error="errors.category" />
+        <FormInput v-model="form.size" name="size" label="ไซส์" placeholder="เช่น M" maxlength="50" :suggestions="PRODUCT_SIZES" :error="errors.size" />
+        <FormInput v-model="form.color" name="color" label="สี" placeholder="เช่น Black" maxlength="50" :suggestions="PRODUCT_COLORS" :error="errors.color" />
       </div>
 
-      <FormTextarea v-model="form.description" label="รายละเอียดสินค้า" rows="4" />
+      <FormTextarea v-model="form.description" label="รายละเอียดสินค้า" rows="4" maxlength="2000" :error="errors.description" />
 
       <div class="flex justify-end gap-3">
         <button type="button" class="rounded-full border border-stone-300 px-6 py-2.5 text-sm text-stone-600 hover:bg-stone-50"

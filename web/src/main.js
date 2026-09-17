@@ -11,7 +11,13 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 
+// กับ error ที่เกิดตอน render โดยไม่ตั้งใจ: log ขึ้นคอนโซลไว้ดูแทนที่จะเงียบๆ
+app.config.errorHandler = (err, _instance, info) => {
+  console.error('[uncaught]', info, err)
+}
+
 const auth = useAuthStore()
-auth.init().finally(() => {
+// ถ้าติดต่อ Supabase ครั้งแรกหลุด (offline/รอ retry) ให้ mount ต่อไปแบบหน้าว่าง
+auth.init().catch(() => {}).finally(() => {
   app.mount('#app')
 })

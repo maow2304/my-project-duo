@@ -2,7 +2,7 @@
 // หน้ารายละเอียดสินค้า - โชว์รูป/ข้อมูล/เลือกจำนวน แล้วเพิ่มลงตะกร้าหรือเปิดแชทกับผู้ขาย
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { formatTHB } from '@/lib/format'
+import { formatTHB, toNumber } from '@/lib/format'
 import { getProductById } from '@/api/products'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
@@ -35,8 +35,8 @@ const selectedSize = computed({
   set: () => {},
 })
 
-// ราคารวมตามจำนวนที่เลือก
-const totalPrice = computed(() => (product.value ? Number(product.value.price) * quantity.value : 0))
+// ราคารวมตามจำนวนที่เลือก (ราคาเพี้ยนให้เป็น 0 แทน NaN)
+const totalPrice = computed(() => (product.value ? toNumber(product.value.price) * quantity.value : 0))
 
 async function load() {
   loading.value = true

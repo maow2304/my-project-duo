@@ -31,15 +31,21 @@ export const useNotificationStore = defineStore('notification', () => {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload) => {
-          items.value = [payload.new, ...items.value]
+          const n = payload?.new
+          if (!n || !n.id) return // กัน payload แปลกๆ (ไม่มีข้อมูล) เข้า state
+          if (!items.value.some((x) => x.id === n.id)) {
+            items.value = [n, ...items.value]
+          }
         }
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'notifications' },
         (payload) => {
-          const idx = items.value.findIndex((n) => n.id === payload.new.id)
-          if (idx >= 0) items.value[idx] = payload.new
+          const n = payload?.new
+          if (!n || !n.id) return
+          const idx = items.value.findIndex((x) => x.id === n.id)
+          if (idx >= 0) items.value[idx] = n
         }
       )
       .subscribe()

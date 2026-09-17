@@ -37,6 +37,8 @@ async function placeOrderHandler() {
   submitting.value = true
   try {
     for (const item of cart.items) {
+      // กันสินค้าถูกลบไปแล้ว (product เป็น null) ซึ่งปกติจะ TypeError ตรงนี้
+      if (!item.product) throw new Error('สินค้าบางรายการอาจถูกลบไปแล้ว กรุณากลับไปจัดการตะกร้า')
       if (item.quantity > item.product.quantity) throw new Error('สินค้าบางรายการเกินสต็อก')
     }
 

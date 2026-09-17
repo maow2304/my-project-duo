@@ -5,6 +5,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { toNumber } from '@/lib/format'
 import {
   getOrCreateCart,
   listCartItems,
@@ -20,9 +21,11 @@ export const useCartStore = defineStore('cart', () => {
   const loading = ref(false)
 
   /** จำนวนชิ้นรวมในตะกร้า (เช่น ซื้อ 2+3 = 5) */
-  const count = computed(() => items.value.reduce((s, i) => s + i.quantity, 0))
-  /** ยอดรวมเงินทั้งหมดในตะกร้า */
-  const total = computed(() => items.value.reduce((s, i) => s + i.quantity * Number(i.price || 0), 0))
+  const count = computed(() => items.value.reduce((s, i) => s + toNumber(i.quantity), 0))
+  /** ยอดรวมเงินทั้งหมดในตะกร้า (ค่าเพี้ยนให้ถือเป็น 0 แทนการกระจาย NaN) */
+  const total = computed(() =>
+    items.value.reduce((s, i) => s + toNumber(i.quantity) * toNumber(i.price), 0)
+  )
 
   /** หา cart_id ของผู้ซื้อ (สร้างใหม่ถ้ายังไม่มี) และจดจำไว้ใช้งาน */
   async function ensureCart(buyerId) {

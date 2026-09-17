@@ -2,7 +2,7 @@
 // หน้าคำสั่งซื้อของผู้ขาย - ดูออเดอร์ที่เกี่ยวกับสินค้าของเราและอัปเดตสถานะ
 import { ref, computed, onMounted } from 'vue'
 import { listSellerAccessibleOrderItems, updateOrderStatus } from '@/api/orders'
-import { formatTHB, formatDate } from '@/lib/format'
+import { formatTHB, formatDate, toNumber } from '@/lib/format'
 import { ORDER_STATUSES } from '@/lib/constants'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from '@/lib/toast'
@@ -28,12 +28,17 @@ const orders = computed(() => {
       map.set(o.order_id, { ...o, items: [], total: 0 })
     }
     map.get(o.order_id).items.push(item)
-    map.get(o.order_id).total += Number(item.subtotal)
+    map.get(o.order_id).total += toNumber(item.subtotal)
   }
   return [...map.values()].sort(
     (a, b) => new Date(b.order_date ?? 0) - new Date(a.order_date ?? 0)
   )
 })
+
+// ดัชนีสถานะใน ORDER_STATUSES (คืน -1 ถ้าค่าไม่รู้จัก เพื่อกันอัปเดตสถานะเพี้ยน)
+function statusIdx(status) {
+  return ORDER_STATUSES.indexOf(status)
+}
 
 async function load() {
   loading.value = true
@@ -87,18 +92,18 @@ onMounted(load)
 
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-stone-200 pt-4">
           <p class="text-sm text-stone-500">ยอดรวม (เฉพาะสินค้าคุณ): <b class="text-stone-700">{{ formatTHB(o.total) }}</b></p>
-          <div v-if="o.status !== 'Delivered'" class="flex items-center gap-2">
+          <div v-if="statusIdx(o.status) >= 0 && o.status !== 'Delivered'" class="flex items-center gap-2">
             <select :value="o.status" class="rounded-lg border border-stone-200 px-3 py-1.5 text-sm outline-none focus:border-brand-400"
               @change="updateStatus(o.order_id, $event.target.value)">
-              <option v-for="s in ORDER_STATUSES" :key="s" :value="s" :disabled="ORDER_STATUSES.indexOf(s) < ORDER_STATUSES.indexOf(o.status)">{{ s }}</option>
+              <option v-for="s in ORDER_STATUSES" :key="s" :value="s" :disabled="statusIdx(s) < statusIdx(o.status)">{{ s }}</option>
             </select>
             <button
-              v-if="ORDER_STATUSES.indexOf(o.status) < ORDER_STATUSES.length - 1"
+              v-if="statusIdx(o.status) < ORDER_STATUSES.length - 1"
               :disabled="upgrading === o.order_id"
               class="rounded-full bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
-              @click="updateStatus(o.order_id, ORDER_STATUSES[ORDER_STATUSES.indexOf(o.status) + 1])"
+              @click="updateStatus(o.order_id, ORDER_STATUSES[statusIdx(o.status) + 1])"
             >
-              {{ upgrading === o.order_id ? 'กำลังอัปเดต...' : 'อัปเดตเป็น ' + ORDER_STATUSES[ORDER_STATUSES.indexOf(o.status) + 1] }}
+              {{ upgrading === o.order_id ? 'กำลังอัปเดต...' : 'อัปเดตเป็น ' + ORDER_STATUSES[statusIdx(o.status) + 1] }}
             </button>
           </div>
           <p v-else class="text-sm text-emerald-600">ส่งมอบเสร็จสิ้น ✓</p>

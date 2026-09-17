@@ -7,6 +7,7 @@ import { useChatStore } from '@/stores/chat'
 import SellerLayout from './SellerLayout.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Icon from '@/components/Icon.vue'
+import { formatDate } from '@/lib/format'
 
 const auth = useAuthStore()
 const chat = useChatStore()
@@ -40,11 +41,11 @@ onMounted(() => chat.listConversations(auth.user.id).catch(() => {}))
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
             <p class="truncate font-medium text-stone-700">{{ chat.otherParty(c, auth.user.id)?.name }}</p>
-            <span v-if="c.product" class="truncate rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">{{ c.product.product_name }}</span>
+            <span v-if="c.product" class="truncate rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">{{ c.product.product_name || 'สินค้า' }}</span>
           </div>
           <p class="mt-0.5 truncate text-sm text-stone-400">{{ c.last_message?.content || 'ยังไม่มีข้อความ' }}</p>
         </div>
-        <span v-if="c.last_message" class="shrink-0 text-xs text-stone-400">{{ c.last_message.sent_at }}</span>
+        <span v-if="c.last_message" class="shrink-0 text-xs text-stone-400">{{ formatDate(c.last_message.sent_at) }}</span>
         <Icon name="chevron-right" class="shrink-0 text-stone-300" />
       </button>
     </div>

@@ -3,6 +3,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { listProducts } from '@/api/products'
+import { toNumber } from '@/lib/format'
 import SiteNavbar from '@/components/SiteNavbar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import ProductCard from '@/components/ProductCard.vue'
@@ -36,10 +37,10 @@ const filtered = computed(() => {
   }
   if (category.value !== 'ทั้งหมด') list = list.filter((p) => p.category === category.value)
   if (maxPriceFilter.value != null && maxPriceFilter.value > 0) {
-    list = list.filter((p) => Number(p.price) <= maxPriceFilter.value)
+    list = list.filter((p) => toNumber(p.price) <= maxPriceFilter.value)
   }
-  if (sort.value === 'price-asc') list.sort((a, b) => a.price - b.price)
-  else if (sort.value === 'price-desc') list.sort((a, b) => b.price - a.price)
+  if (sort.value === 'price-asc') list.sort((a, b) => toNumber(a.price) - toNumber(b.price))
+  else if (sort.value === 'price-desc') list.sort((a, b) => toNumber(b.price) - toNumber(a.price))
   return list
 })
 
@@ -48,7 +49,7 @@ async function loadProducts() {
   loading.value = true
   try {
     products.value = await listProducts()
-    maxPrice.value = Math.max(0, ...products.value.map((p) => Number(p.price)))
+    maxPrice.value = Math.max(0, ...products.value.map((p) => toNumber(p.price)))
     categories.value = ['ทั้งหมด', ...new Set(products.value.map((p) => p.category).filter(Boolean))]
   } catch (e) {
     // แสดงกริดว่าง (filtered ว่าง) ให้ EmptyState จัดการ

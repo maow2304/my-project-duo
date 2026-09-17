@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from '@/lib/toast'
+import { isEmail } from '@/lib/validators'
 import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
@@ -18,9 +19,27 @@ const submitting = ref(false)
 
 async function submit() {
   error.value = ''
+  // กันข้อมูลแปลกๆ ก่อนส่ง: อีเมลต้องมีรูปแบบที่ถูก + ห้ามเว้นวรรคในรหัสผ่าน
+  const emailVal = email.value.trim()
+  if (!emailVal || !isEmail(emailVal)) {
+    error.value = 'กรุณากรอกอีเมลให้ถูกต้อง'
+    return
+  }
+  if (!password.value) {
+    error.value = 'กรุณากรอกรหัสผ่าน'
+    return
+  }
+  if (password.value.length > 72) {
+    error.value = 'รหัสผ่านยาวเกินไป'
+    return
+  }
+  if (/\s/.test(password.value)) {
+    error.value = 'รหัสผ่านห้ามมีช่องว่าง'
+    return
+  }
   submitting.value = true
   try {
-    await auth.login(email.value, password.value)
+    await auth.login(emailVal, password.value)
     toast('เข้าสู่ระบบสำเร็จ ยินดีต้อนรับกลับ!')
     const redirect = route.query.redirect
     if (redirect) router.push(String(redirect))
@@ -51,13 +70,13 @@ async function submit() {
       <form class="space-y-4 rounded-3xl border border-stone-100 bg-white p-7 shadow-xl shadow-stone-200/50" @submit.prevent="submit">
         <div>
           <label class="mb-1.5 block text-sm font-medium text-stone-600">อีเมล</label>
-          <input v-model="email" type="email" required placeholder="you@example.com"
+          <input v-model="email" type="email" maxlength="254" required placeholder="you@example.com"
             class="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
         </div>
         <div>
           <label class="mb-1.5 block text-sm font-medium text-stone-600">รหัสผ่าน</label>
           <div class="relative">
-            <input v-model="password" :type="showPw ? 'text' : 'password'" required placeholder="••••••••"
+            <input v-model="password" :type="showPw ? 'text' : 'password'" maxlength="72" required placeholder="••••••••"
               class="w-full rounded-xl border border-stone-200 px-4 py-2.5 pr-11 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
             <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-brand-600"
               @click="showPw = !showPw">{{ showPw ? 'ซ่อน' : 'แสดง' }}</button>

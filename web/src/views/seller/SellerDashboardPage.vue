@@ -4,7 +4,7 @@ import { ref, computed, onMounted } from 'vue'
 import { listProductsBySeller } from '@/api/products'
 import { listSellerAccessibleOrderItems, listOrdersByIds } from '@/api/orders'
 import { useAuthStore } from '@/stores/auth'
-import { formatTHB, formatDate } from '@/lib/format'
+import { formatTHB, formatDate, toNumber } from '@/lib/format'
 import StatusBadge from '@/components/StatusBadge.vue'
 import Spinner from '@/components/Spinner.vue'
 import Icon from '@/components/Icon.vue'
@@ -29,7 +29,7 @@ async function load() {
 
     stats.value.products = products.length
     stats.value.outOfStock = products.filter((p) => p.quantity === 0).length
-    stats.value.sales = myItems.reduce((s, i) => s + Number(i.subtotal), 0)
+    stats.value.sales = myItems.reduce((s, i) => s + toNumber(i.subtotal), 0)
     stats.value.orderCount = new Set(myItems.map((i) => i.order_id)).size
 
     const orderIds = [...new Set(myItems.map((i) => i.order_id))]
@@ -81,7 +81,7 @@ onMounted(load)
               class="flex items-center gap-3 py-3">
               <span class="grid h-9 w-9 place-items-center rounded-lg bg-stone-100 text-xs font-bold text-stone-600">#{{ o.order_id }}</span>
               <div class="flex-1">
-                <p class="text-sm font-medium text-stone-700">โดย {{ o.buyer?.name }}</p>
+                <p class="text-sm font-medium text-stone-700">โดย {{ o.buyer?.name || 'ผู้ซื้อ' }}</p>
                 <p class="text-xs text-stone-400">{{ formatDate(o.order_date) }}</p>
               </div>
               <StatusBadge :status="o.status" />

@@ -86,7 +86,7 @@ onBeforeUnmount(() => {
       <div class="flex-1">
         <p class="font-medium">{{ party?.name || 'ผู้ใช้งาน' }}</p>
         <p v-if="convo.product" class="text-xs text-stone-400">
-          สินค้า: {{ convo.product.product_name }}
+          สินค้า: {{ convo.product.product_name || 'สินค้า' }}
         </p>
       </div>
       <button v-if="convo.product" class="rounded-full border border-stone-200 px-3 py-1 text-xs text-stone-500 hover:bg-stone-50"

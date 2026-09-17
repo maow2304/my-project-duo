@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from '@/lib/toast'
+import { isEmail, hasDigit, isValidName, isValidUsername, cleanDigits } from '@/lib/validators'
 import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
@@ -22,27 +23,64 @@ const form = ref({
 })
 const showPw = ref(false)
 const error = ref('')
+// ข้อความ error รายช่อง (แสดงใต้ input ที่เกี่ยวข้อง) - ล้างทุกครั้งที่พิมพ์
+const errors = ref({})
 const submitting = ref(false)
+
+/** ตรวจรูปแบบข้อมูลก่อน submit; คืน error รายช่อง (ช่องไหนผ่าน = เป็น "") */
+function validate() {
+  const errs = {}
+  const username = form.value.username.trim()
+  const name = form.value.name.trim()
+  const rawPhone = form.value.phone.trim()
+
+  // username: ตัวอักษร/ตัวเลข/_ เท่านั้น ยาว 3-30 (อนุญาตตัวเลข)
+  if (!username) errs.username = 'กรุณากรอกชื่อผู้ใช้'
+  else if (username.length < 3 || username.length > 30) errs.username = 'ชื่อผู้ใช้ต้องยาว 3-30 ตัวอักษร'
+  else if (!isValidUsername(username)) errs.username = 'ห้ามเว้นวรรคหรือใช้อักขระพิเศษ (ใช้ตัวอักษร ตัวเลข _ ได้)'
+
+  // ชื่อ/ชื่อร้าน: ห้ามตัวเลขและอักขระพิเศษ ยกเว้น จุด - และช่องว่าง
+  if (!name) errs.name = 'กรุณากรอก' + (role.value === 'seller' ? 'ชื่อร้านค้า' : 'ชื่อ-นามสกุล')
+  else if (hasDigit(name)) errs.name = 'ชื่อห้ามมีตัวเลข'
+  else if (!isValidName(name)) errs.name = 'ชื่อมีอักขระที่ไม่ได้รับอนุญาต'
+  else if (name.length < 2 || name.length > 100) errs.name = 'ชื่อต้องยาว 2-100 ตัวอักษร'
+
+  // email: ต้องผ่าน regex + ไม่มีช่องว่าง
+  if (!isEmail(form.value.email)) errs.email = 'รูปแบบอีเมลไม่ถูกต้อง'
+
+  // เบอร์โทร (ไม่บังคับ แต่ถ้ากรอกต้องเป็นตัวเลข 9-10 หลัก)
+  if (rawPhone) {
+    const withoutSep = rawPhone.replace(/[\s\-()]+/g, '')
+    if (/\D/.test(withoutSep)) errs.phone = 'เบอร์โทรต้องเป็นตัวเลขเท่านั้น'
+    else if (withoutSep.length < 9 || withoutSep.length > 10) errs.phone = 'เบอร์โทรต้องมี 9-10 หลัก'
+  }
+
+  // รหัสผ่าน: อย่างน้อย 6 ตัว ห้ามยาวเกิน 72 และห้ามเว้นวรรค
+  if (form.value.password.length < 6) errs.password = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'
+  else if (form.value.password.length > 72) errs.password = 'รหัสผ่านยาวเกินไป (สูงสุด 72 ตัวอักษร)'
+  else if (/\s/.test(form.value.password)) errs.password = 'รหัสผ่านห้ามมีช่องว่าง'
+
+  // สถานที่รับ/ส่งของ: จำกัดความยาว
+  const place = (role.value === 'seller' ? form.value.places : form.value.address).trim()
+  if (place.length > 200) errs.place = 'สถานที่ต้องไม่เกิน 200 ตัวอักษร'
+
+  return errs
+}
 
 async function submit() {
   error.value = ''
-  if (!form.value.username.trim()) {
-    error.value = 'กรุณากรอกชื่อผู้ใช้'
-    return
-  }
-  if (form.value.password.length < 6) {
-    error.value = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'
-    return
-  }
+  const errs = validate()
+  errors.value = errs
+  if (Object.values(errs).some(Boolean)) return
   submitting.value = true
   try {
     await auth.register({
-      email: form.value.email,
+      email: form.value.email.trim(),
       password: form.value.password,
       username: form.value.username.trim(),
       role: role.value,
-      name: form.value.name.trim() || form.value.username.trim(),
-      phone: form.value.phone.trim(),
+      name: form.value.name.trim(),
+      phone: cleanDigits(form.value.phone),
       address: form.value.address.trim(),
       places: form.value.places.trim(),
     })
@@ -74,7 +112,7 @@ async function submit() {
         </div>
       </div>
 
-      <form class="space-y-5 rounded-3xl border border-stone-100 bg-white p-7 shadow-xl shadow-stone-200/50" @submit.prevent="submit">
+      <form class="space-y-5 rounded-3xl border border-stone-100 bg-white p-7 shadow-xl shadow-stone-200/50" @input="errors = {}" @submit.prevent="submit">
         <!-- role selection -->
         <div class="grid grid-cols-2 gap-3">
           <button type="button"
@@ -102,46 +140,59 @@ async function submit() {
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
             <label class="mb-1.5 block text-sm font-medium text-stone-600">อีเมล</label>
-            <input v-model="form.email" type="email" required placeholder="you@example.com"
-              class="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
+            <input v-model="form.email" type="email" maxlength="254" required placeholder="you@example.com"
+              class="w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2"
+              :class="errors.email ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-stone-200 focus:border-brand-400 focus:ring-brand-100'" />
+            <p v-if="errors.email" class="mt-1 text-xs text-red-500">{{ errors.email }}</p>
           </div>
           <div>
             <label class="mb-1.5 block text-sm font-medium text-stone-600">ชื่อผู้ใช้ (username)</label>
-            <input v-model="form.username" required placeholder="nickname"
-              class="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
+            <input v-model="form.username" maxlength="30" required placeholder="nickname"
+              class="w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2"
+              :class="errors.username ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-stone-200 focus:border-brand-400 focus:ring-brand-100'" />
+            <p v-if="errors.username" class="mt-1 text-xs text-red-500">{{ errors.username }}</p>
           </div>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
             <label class="mb-1.5 block text-sm font-medium text-stone-600">{{ role === 'seller' ? 'ชื่อร้านค้า' : 'ชื่อ-นามสกุล' }}</label>
-            <input v-model="form.name" required :placeholder="role === 'seller' ? 'ชื่อร้านของคุณ' : 'ชื่อ นามสกุล'"
-              class="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
+            <input v-model="form.name" maxlength="100" required :placeholder="role === 'seller' ? 'ชื่อร้านของคุณ' : 'ชื่อ นามสกุล'"
+              class="w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2"
+              :class="errors.name ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-stone-200 focus:border-brand-400 focus:ring-brand-100'" />
+            <p v-if="errors.name" class="mt-1 text-xs text-red-500">{{ errors.name }}</p>
           </div>
           <div>
             <label class="mb-1.5 block text-sm font-medium text-stone-600">เบอร์โทรศัพท์</label>
-            <input v-model="form.phone" placeholder="08x-xxx-xxxx"
-              class="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
+            <input v-model="form.phone" maxlength="20" placeholder="08x-xxx-xxxx"
+              class="w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2"
+              :class="errors.phone ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-stone-200 focus:border-brand-400 focus:ring-brand-100'" />
+            <p v-if="errors.phone" class="mt-1 text-xs text-red-500">{{ errors.phone }}</p>
           </div>
         </div>
 
         <div>
           <label class="mb-1.5 block text-sm font-medium text-stone-600">สถานที่รับ/ส่งของ (places)</label>
-          <input v-if="role === 'seller'" v-model="form.places"
+          <input v-if="role === 'seller'" v-model="form.places" maxlength="200"
             placeholder="เช่น หอพักนิสิต ม.พะเยา"
-            class="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
-          <input v-else v-model="form.address"
+            class="w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2"
+            :class="errors.place ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-stone-200 focus:border-brand-400 focus:ring-brand-100'" />
+          <input v-else v-model="form.address" maxlength="200"
             placeholder="เช่น หอพักนิสิต ม.พะเยา"
-            class="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
+            class="w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2"
+            :class="errors.place ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-stone-200 focus:border-brand-400 focus:ring-brand-100'" />
+          <p v-if="errors.place" class="mt-1 text-xs text-red-500">{{ errors.place }}</p>
         </div>
 
         <div>
           <label class="mb-1.5 block text-sm font-medium text-stone-600">รหัสผ่าน</label>
           <div class="relative">
-            <input v-model="form.password" :type="showPw ? 'text' : 'password'" required placeholder="อย่างน้อย 6 ตัวอักษร"
-              class="w-full rounded-xl border border-stone-200 px-4 py-2.5 pr-11 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
+            <input v-model="form.password" :type="showPw ? 'text' : 'password'" maxlength="72" required placeholder="อย่างน้อย 6 ตัวอักษร"
+              class="w-full rounded-xl border px-4 py-2.5 pr-11 text-sm outline-none focus:ring-2"
+              :class="errors.password ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-stone-200 focus:border-brand-400 focus:ring-brand-100'" />
             <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-brand-600"
               @click="showPw = !showPw">{{ showPw ? 'ซ่อน' : 'แสดง' }}</button>
+            <p v-if="errors.password" class="mt-1 text-xs text-red-500">{{ errors.password }}</p>
           </div>
         </div>
 

@@ -14,6 +14,8 @@ const props = defineProps({
   min: { type: Number, default: null },
   max: { type: Number, default: null },
   step: { type: Number, default: null },
+  maxlength: { type: [Number, String], default: null },
+  error: { type: String, default: '' }, // ข้อความ error ใต้ช่อง (ยกเว้นว่าง = ไม่มี error)
   suggestions: { type: Array, default: () => [] }, // ตัวเลือกสำหรับ datalist
 })
 const emit = defineEmits(['update:modelValue'])
@@ -35,10 +37,13 @@ const listId = computed(() => (props.name ? `dl-${props.name}` : null))
       :min="min"
       :max="max"
       :step="step"
+      :maxlength="maxlength || undefined"
       :list="listId || undefined"
-      class="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-stone-100"
+      class="w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 disabled:bg-stone-100"
+      :class="error ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : 'border-stone-200 focus:border-brand-400 focus:ring-brand-100'"
       @input="emit('update:modelValue', $event.target.value)"
     />
+    <p v-if="error" class="mt-1 text-xs text-red-500">{{ error }}</p>
     <datalist v-if="suggestions.length" :id="listId">
       <option v-for="s in suggestions" :key="s" :value="s" />
     </datalist>

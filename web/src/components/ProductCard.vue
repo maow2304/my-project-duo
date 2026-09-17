@@ -36,15 +36,15 @@ const props = defineProps({
       </span>
     </div>
     <div class="flex flex-1 flex-col gap-1 p-4">
-      <h3 class="line-clamp-2 font-medium text-stone-800">{{ product.product_name }}</h3>
+      <h3 class="line-clamp-2 font-medium text-stone-800">{{ product.product_name || 'สินค้า' }}</h3>
       <div class="mt-auto flex items-end justify-between pt-2">
         <span class="text-lg font-bold text-brand-700">{{ formatTHB(product.price) }}</span>
-        <span v-if="product.color" class="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
+        <span v-if="typeof product.color === 'string' && product.color" class="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
           <span class="h-2.5 w-2.5 rounded-full border border-stone-300" :style="{ backgroundColor: product.color.toLowerCase() }"></span>
           {{ product.color }}
         </span>
       </div>
-      <span v-if="product.seller" class="mt-1 text-xs text-stone-400">โดย {{ product.seller.name }}</span>
+      <span v-if="product.seller" class="mt-1 text-xs text-stone-400">โดย {{ product.seller.name || 'ร้านค้า' }}</span>
     </div>
   </RouterLink>
 </template>
