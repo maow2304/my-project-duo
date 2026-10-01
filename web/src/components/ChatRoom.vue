@@ -21,21 +21,30 @@ const convo = ref(null)
 const text = ref('')
 const sending = ref(false)
 const loading = ref(true)
+const loadError = ref('')
 let channel = null
 const scroller = ref(null)
 
+// id ของตัวเอง (กัน null กรณีหลุดล็อกอินกลางคัน)
+const myId = computed(() => auth.user?.id)
 // คู่สนทนา = คนในห้องที่ไม่ได้เป็นเรา
-const party = computed(() => (convo.value ? chat.otherParty(convo.value, auth.user.id) : null))
+const party = computed(() => (convo.value && myId.value ? chat.otherParty(convo.value, myId.value) : null))
 const messages = computed(() => chat.messages[props.conversationId] || [])
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     convo.value = await getConversationById(props.conversationId)
   } catch (e) {
     convo.value = null
   }
-  await chat.loadMessages(props.conversationId)
+  try {
+    // โหลดข้อความแยก try อีกชั้น: ถ้าข้อความพัง ห้องแชทต้องยังเปิดและ subscribe ได้
+    await chat.loadMessages(props.conversationId)
+  } catch (e) {
+    loadError.value = 'โหลดข้อความไม่สำเร็จ กรุณาลองเข้าใหม่'
+  }
   channel = chat.subscribeToMessages(props.conversationId, scrollDown)
   loading.value = false
   scrollDown()
@@ -98,13 +107,14 @@ onBeforeUnmount(() => {
     <div ref="scroller" class="h-[420px] space-y-3 overflow-y-auto bg-stone-50 p-4">
       <div v-if="loading" class="grid h-full place-items-center text-sm text-stone-400">กำลังโหลดแชท...</div>
       <template v-else>
-        <div v-for="m in messages" :key="m.id" class="flex" :class="m.sender_id === auth.user.id ? 'justify-end' : 'justify-start'">
+        <p v-if="loadError" class="rounded-xl bg-red-50 px-4 py-2.5 text-center text-sm text-red-600">{{ loadError }}</p>
+        <div v-for="m in messages" :key="m.id" class="flex" :class="m.sender_id === myId ? 'justify-end' : 'justify-start'">
           <div
             class="max-w-[75%] rounded-2xl px-4 py-2 text-sm shadow-sm"
-            :class="m.sender_id === auth.user.id ? 'rounded-br-sm bg-brand-600 text-white' : 'rounded-bl-sm bg-white text-stone-700'"
+            :class="m.sender_id === myId ? 'rounded-br-sm bg-brand-600 text-white' : 'rounded-bl-sm bg-white text-stone-700'"
           >
             <p class="whitespace-pre-line leading-relaxed">{{ m.content }}</p>
-            <p class="mt-1 text-right text-[10px]" :class="m.sender_id === auth.user.id ? 'text-brand-100' : 'text-stone-400'">
+            <p class="mt-1 text-right text-[10px]" :class="m.sender_id === myId ? 'text-brand-100' : 'text-stone-400'">
               {{ formatDate(m.sent_at) }}
             </p>
           </div>

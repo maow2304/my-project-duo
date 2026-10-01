@@ -25,6 +25,7 @@ const product = ref(null)
 const loading = ref(true)
 const quantity = ref(1)
 const openChatBusy = ref(false)
+const buyingNow = ref(false)
 
 // ตัวเลือกไซส์/สีของสินค้า (variants มีสต็อกแยกกันตามแต่ละแบบ)
 const variants = ref([])
@@ -86,37 +87,60 @@ function clampQty(n) {
   else quantity.value = n
 }
 
-// เพิ่มเข้าตะกร้า (ต้องล็อกอินเป็นผู้ซื้อ และเช็กสต็อกก่อน)
-async function addToCart() {
+// ตรวจเงื่อนไขก่อนหยิบสินค้า (ใช้ร่วมกันทั้ง "เพิ่มลงตะกร้า" และ "ซื้อเลย")
+// คืน payload สำหรับ cart.addItem หรือ null พร้อม toast เหตุผลเมื่อไปต่อไม่ได้
+function buildCartPayload(action) {
   if (!auth.isLoggedIn) {
-    toast('กรุณาเข้าสู่ระบบก่อนเพิ่มสินค้าลงตะกร้า', 'info')
+    toast(action === 'buy' ? 'กรุณาเข้าสู่ระบบก่อนซื้อสินค้า' : 'กรุณาเข้าสู่ระบบก่อนเพิ่มสินค้าลงตะกร้า', 'info')
     router.push({ name: 'login', query: { redirect: route.fullPath } })
-    return
+    return null
   }
   if (auth.isSeller) {
     toast('บัญชีผู้ขายไม่สามารถซื้อสินค้าได้', 'error')
-    return
+    return null
   }
   // ถ้าสินค้ามีตัวเลือก ต้องเลือกไซส์/สีก่อน
   if (variants.value.length && !selectedVariant.value) {
-    toast('กรุณาเลือกไซส์และสีก่อนเพิ่มลงตะกร้า', 'error')
-    return
+    toast('กรุณาเลือกไซส์และสีก่อน', 'error')
+    return null
   }
   if (quantity.value > maxQty.value) {
     toast('จำนวนสินค้าคงเหลือไม่เพียงพอ', 'error')
-    return
+    return null
   }
+  return {
+    product_id: product.value.product_id,
+    quantity: quantity.value,
+    color: selectedVariant.value ? selectedVariant.value.color : product.value.color,
+    size: selectedVariant.value ? selectedVariant.value.size : product.value.size,
+    variant_id: selectedVariant.value ? selectedVariant.value.variant_id : null,
+  }
+}
+
+// เพิ่มเข้าตะกร้า (ต้องล็อกอินเป็นผู้ซื้อ และเช็กสต็อกก่อน)
+async function addToCart() {
+  const payload = buildCartPayload('cart')
+  if (!payload) return
   try {
-    await cart.addItem(auth.user.id, {
-      product_id: product.value.product_id,
-      quantity: quantity.value,
-      color: selectedVariant.value ? selectedVariant.value.color : product.value.color,
-      size: selectedVariant.value ? selectedVariant.value.size : product.value.size,
-      variant_id: selectedVariant.value ? selectedVariant.value.variant_id : null,
-    })
+    await cart.addItem(auth.user.id, payload)
     toast('เพิ่มสินค้าลงตะกร้าแล้ว')
   } catch (e) {
     toast('เพิ่มสินค้าไม่สำเร็จ กรุณาลองใหม่', 'error')
+  }
+}
+
+// ซื้อเลย: เพิ่มลงตะกร้าแล้วพาไปหน้าชำระเงินทันที
+async function buyNow() {
+  const payload = buildCartPayload('buy')
+  if (!payload) return
+  buyingNow.value = true
+  try {
+    await cart.addItem(auth.user.id, payload)
+    router.push({ name: 'checkout' })
+  } catch (e) {
+    toast('ดำเนินการไม่สำเร็จ กรุณาลองใหม่', 'error')
+  } finally {
+    buyingNow.value = false
   }
 }
 
@@ -258,6 +282,13 @@ onMounted(load)
                 class="flex items-center justify-center gap-2 rounded-full bg-brand-600 px-8 py-3.5 font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                 @click="addToCart">
                 <Icon name="cart" /> เพิ่มลงตะกร้า
+              </button>
+              <button
+                :disabled="buyingNow || (variants.length ? (!selectedVariant || selectedVariant.quantity === 0) : product.quantity === 0)"
+                class="flex items-center justify-center gap-2 rounded-full bg-accent-500 px-8 py-3.5 font-semibold text-white transition hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-50"
+                @click="buyNow">
+                <span v-if="buyingNow" class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                <Icon v-else name="order" /> ซื้อเลย
               </button>
               <button
                 :disabled="openChatBusy"

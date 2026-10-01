@@ -7,8 +7,10 @@
 import { supabase } from '@/lib/supabase'
 
 // คอลัมน์ที่ต้องการ join ระหว่าง buyer/seller/product กับชื่อ table ที่ชัดเจน
+// หมายเหตุ: ห้ามเขียน "order by / limit" ต่อท้ายในสตริง select (PostgREST จะ parse ไม่ผ่าน
+// แล้วคืน PGRST100) ให้ใช้ .order(..., { foreignTable }) กับ .limit(..., { foreignTable }) แทน
 const CONVERSATION_SELECT =
-  '*, buyer:conversations_buyer_id_fkey(username, name, phone), seller:conversations_seller_id_fkey(username, name, places), product:conversations_product_id_fkey(product_id, product_name, price, image, color), last_message:messages(id, content, sent_at, sender_id) order by sent_at desc limit 1'
+  '*, buyer:conversations_buyer_id_fkey(username, name, phone), seller:conversations_seller_id_fkey(username, name, places), product:conversations_product_id_fkey(product_id, product_name, price, image, color), last_message:messages(id, content, sent_at, sender_id)'
 
 /**
  * หาหรือสร้างห้องแชทระหว่างผู้ซื้อ-ผู้ขาย
@@ -45,6 +47,8 @@ export async function getConversationById(conversationId) {
     .from('conversations')
     .select(CONVERSATION_SELECT)
     .eq('id', conversationId)
+    .order('sent_at', { foreignTable: 'last_message', ascending: false })
+    .limit(1, { foreignTable: 'last_message' })
     .maybeSingle()
   if (error) throw error
   return data
@@ -57,6 +61,8 @@ export async function listConversations(uid) {
     .select(CONVERSATION_SELECT)
     .or(`buyer_id.eq.${uid},seller_id.eq.${uid}`)
     .order('created_at', { ascending: false })
+    .order('sent_at', { foreignTable: 'last_message', ascending: false })
+    .limit(1, { foreignTable: 'last_message' })
   if (error) throw error
   return data || []
 }
