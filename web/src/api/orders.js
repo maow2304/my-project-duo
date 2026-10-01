@@ -13,12 +13,14 @@ import { supabase } from '@/lib/supabase'
  * @param {string} buyerId id ผู้ซื้อ
  * @param {Array} items [{ product_id, quantity, color, size, variant_id }]
  *   (variant_id ใช้ตัดสต็อกแยกตามตัวเลือก ถ้าไม่มีจะใช้สต็อกรวมแบบเดิม)
+ * @param {string} shippingAddress ที่อยู่จัดส่ง (snapshot ลงออเดอร์)
  * @returns {number} order_id ที่สร้างใหม่
  */
-export async function placeOrder(buyerId, items) {
+export async function placeOrder(buyerId, items, shippingAddress) {
   const { data, error } = await supabase.rpc('place_order', {
     p_buyer_id: buyerId,
     p_items: items,
+    p_shipping_address: shippingAddress || null,
   })
   if (error) throw error
   return data
@@ -39,7 +41,7 @@ export async function listBuyerOrders(buyerId) {
 export async function getOrderById(orderId) {
   const { data, error } = await supabase
     .from('orders')
-    .select('*')
+    .select('*, buyer:orders_buyer_id_fkey(name, address)')
     .eq('order_id', orderId)
     .maybeSingle()
   if (error) throw error
@@ -58,7 +60,7 @@ export async function listOrderItems(orderId) {
 
 // join: order_item -> orders (ข้อมูลออเดอร์) -> buyer (ชื่อผู้ซื้อ)
 // ใช้กับเลเยอร์ผู้ขายเพื่อดูออเดอร์ที่เกี่ยวข้องกับสินค้าตัวเอง
-const ORDER_ITEM_WITH_ORDER = '*, product:order_item_product_id_fkey(*), orders:order_item_order_id_fkey(buyer:orders_buyer_id_fkey(name))'
+const ORDER_ITEM_WITH_ORDER = '*, product:order_item_product_id_fkey(*), orders:order_item_order_id_fkey(buyer:orders_buyer_id_fkey(name, address))'
 
 /**
  * ดึง order_item ทุกแถวที่ผู้ใช้ปัจจุบันมองเห็น (ชั้น RLS กรองให้เฉพาะสินค้าของผู้ขายเอง)

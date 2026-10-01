@@ -35,6 +35,7 @@ docs/                     ← plan.md, CONTRIBUTING.md, สรุปสิ่ง
    - `supabase/migrations/0004_rpc.sql` — ฟังก์ชัน `place_order`
    - `supabase/migrations/0005_product_variants.sql` — ตารางตัวเลือกไซส์/สี + สต็อกแยกตามแบบ
    - `supabase/migrations/0006_rls_recursion_fix.sql` — แก้วงจร RLS orders/order_item (42P17)
+   - `supabase/migrations/0007_order_shipping_address.sql` — ที่อยู่จัดส่งในออเดอร์ + ผู้ขายดูที่อยู่ลูกค้าได้
 3. **Auth → Providers → Email**: ปิด "Confirm email" (เพื่อให้สมัครแล้วเข้าสู่ระบบได้ทันที) — *ไม่บังคับ แต่แนะนำ*
 4. **Realtime**: บนตาราง `messages` และ `notifications` เปิด Realtime ไว้ (ค่าเริ่มต้นของ Supabase เปิดให้อยู่แล้ว)
 5. ใส่ value ใน `web/.env`:

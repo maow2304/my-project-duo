@@ -67,7 +67,7 @@ async function placeOrderHandler() {
       variant_id: i.variant_id || null,
     }))
 
-    const orderId = await placeOrder(auth.user.id, itemsPayload)
+    const orderId = await placeOrder(auth.user.id, itemsPayload, shippingAddress.value.trim())
     // ลบเฉพาะรายการที่สั่งสำเร็จ ที่เหลือคงไว้ในตะกร้า
     await cart.removeItems(cart.selectedItems.map((i) => i.cart_item_id))
 

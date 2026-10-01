@@ -92,6 +92,11 @@ onMounted(load)
           <OrderItemRow v-for="it in o.items" :key="it.order_item_id" :item="it" compact />
         </div>
 
+        <p class="mt-3 flex items-start gap-2 rounded-xl bg-stone-50 px-4 py-2.5 text-sm text-stone-600">
+          <span class="shrink-0 font-medium text-stone-500">ที่อยู่จัดส่ง:</span>
+          <span class="whitespace-pre-line">{{ o.shipping_address || o.buyer?.address || 'ไม่ระบุ' }}</span>
+        </p>
+
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-stone-200 pt-4">
           <p class="text-sm text-stone-500">ยอดรวม (เฉพาะสินค้าคุณ): <b class="text-stone-700">{{ formatTHB(o.total) }}</b></p>
           <div v-if="statusIdx(o.status) >= 0 && o.status !== 'Delivered'" class="flex items-center gap-2">

@@ -60,6 +60,13 @@ onMounted(load)
             </div>
           </section>
 
+          <section class="rounded-2xl border border-stone-200 bg-white p-5">
+            <h2 class="mb-2 font-semibold text-stone-800">ที่อยู่จัดส่ง</h2>
+            <p class="whitespace-pre-line text-sm leading-relaxed text-stone-600">
+              {{ order.shipping_address || order.buyer?.address || 'ไม่ระบุ' }}
+            </p>
+          </section>
+
           <section class="rounded-2xl border border-stone-200 bg-stone-50 p-5">
             <div class="flex justify-between text-sm text-stone-600">
               <span>ยอดรวมทั้งหมด</span>
