@@ -100,10 +100,6 @@ onMounted(load)
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-stone-200 pt-4">
           <p class="text-sm text-stone-500">ยอดรวม (เฉพาะสินค้าคุณ): <b class="text-stone-700">{{ formatTHB(o.total) }}</b></p>
           <div v-if="statusIdx(o.status) >= 0 && o.status !== 'Delivered'" class="flex items-center gap-2">
-            <select :value="o.status" class="rounded-lg border border-stone-200 px-3 py-1.5 text-sm outline-none focus:border-brand-400"
-              @change="updateStatus(o.order_id, $event.target.value)">
-              <option v-for="s in ORDER_STATUSES" :key="s" :value="s" :disabled="statusIdx(s) < statusIdx(o.status)">{{ STATUS_LABEL[s] || s }}</option>
-            </select>
             <button
               v-if="statusIdx(o.status) < ORDER_STATUSES.length - 1"
               :disabled="upgrading === o.order_id"
