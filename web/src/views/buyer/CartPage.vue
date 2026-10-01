@@ -18,8 +18,8 @@ const cart = useCartStore()
 const router = useRouter()
 
 const hasStockIssue = computed(() =>
-  cart.items.some((i) => {
-    const stock = i.variant_id ? i.variant?.quantity : i.product?.quantity
+  cart.selectedItems.some((i) => {
+    const stock = stockOf(i)
     return stock != null && i.quantity > stock
   })
 )
@@ -86,11 +86,28 @@ onMounted(() => {
 
         <div v-else class="grid gap-6 lg:grid-cols-[1fr_320px]">
           <div class="space-y-3">
+            <!-- เลือกทั้งหมด -->
+            <button type="button"
+              class="flex w-full items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm transition hover:border-brand-300"
+              @click="cart.toggleSelectAll()">
+              <span class="grid h-5 w-5 shrink-0 place-items-center rounded-md border transition"
+                :class="cart.allSelected ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300 bg-white text-transparent'">
+                <Icon name="check" :size="14" />
+              </span>
+              <span class="font-medium text-stone-700">เลือกทั้งหมด ({{ cart.items.length }} รายการในตะกร้า)</span>
+              <span class="ml-auto text-xs text-stone-400">สั่งเฉพาะรายการที่ติ๊กไว้</span>
+            </button>
             <div
               v-for="item in cart.items"
               :key="item.cart_item_id"
               class="flex gap-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm"
             >
+              <button type="button" :aria-label="cart.isSelected(item.cart_item_id) ? 'เอาออกจากรายการสั่งซื้อ' : 'เลือกสั่งซื้อรายการนี้'"
+                class="mt-1 grid h-5 w-5 shrink-0 place-items-center self-start rounded-md border transition"
+                :class="cart.isSelected(item.cart_item_id) ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300 bg-white text-transparent'"
+                @click="cart.toggleSelect(item.cart_item_id)">
+                <Icon name="check" :size="14" />
+              </button>
               <RouterLink :to="{ name: 'product-detail', params: { id: item.product_id } }" class="block h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-stone-100">
                 <img v-if="item.product?.image" :src="item.product.image" class="h-full w-full object-cover" />
                 <div v-else class="grid h-full w-full place-items-center text-stone-300"><Icon name="image" /></div>
@@ -122,16 +139,19 @@ onMounted(() => {
               </div>
             </div>
             <p v-if="hasStockIssue" class="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">
-              บางรายการเกินสต็อกสินค้าที่มีอยู่ กรุณาลดจำนวนก่อนสั่งซื้อ
+              บางรายการที่เลือกเกินสต็อกสินค้าที่มีอยู่ กรุณาลดจำนวนก่อนสั่งซื้อ
+            </p>
+            <p v-else-if="cart.items.length && !cart.selectedItems.length" class="rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+              ยังไม่ได้ติ๊กเลือกรายการที่จะสั่งซื้อ
             </p>
           </div>
 
           <!-- summary -->
           <CartSummaryCard
-            :count="cart.count"
-            :total="cart.total"
-            :disabled="!cart.items.length || hasStockIssue"
-            submit-label="ดำเนินการสั่งซื้อ"
+            :count="cart.selectedCount"
+            :total="cart.selectedTotal"
+            :disabled="!cart.selectedItems.length || hasStockIssue"
+            :submit-label="`ดำเนินการสั่งซื้อ (${cart.selectedItems.length} รายการ)`"
             back-to="home"
             back-label="← กลับไปเลือกสินค้าต่อ"
             @submit="router.push({ name: 'checkout' })"

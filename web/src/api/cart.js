@@ -79,6 +79,13 @@ export async function removeCartItem(cartItemId) {
   if (error) throw error
 }
 
+/** ลบหลายรายการพร้อมกันในครั้งเดียว (ใช้หลังสั่งซื้อเฉพาะรายการที่เลือก) */
+export async function removeCartItems(cartItemIds) {
+  if (!cartItemIds.length) return
+  const { error } = await supabase.from('cart_item').delete().in('cart_item_id', cartItemIds)
+  if (error) throw error
+}
+
 /** ล้างตะกร้าทั้งใบ (ใช้หลังสั่งซื้อสำเร็จ) */
 export async function clearCartItems(cartId) {
   const { error } = await supabase.from('cart_item').delete().eq('cart_id', cartId)
