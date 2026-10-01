@@ -58,9 +58,11 @@ export async function listOrderItems(orderId) {
   return data || []
 }
 
-// join: order_item -> orders (ข้อมูลออเดอร์) -> buyer (ชื่อผู้ซื้อ)
+// join: order_item -> orders (ข้อมูลออเดอร์) -> buyer (ชื่อ/ที่อยู่ผู้ซื้อ)
 // ใช้กับเลเยอร์ผู้ขายเพื่อดูออเดอร์ที่เกี่ยวข้องกับสินค้าตัวเอง
-const ORDER_ITEM_WITH_ORDER = '*, product:order_item_product_id_fkey(*), orders:order_item_order_id_fkey(buyer:orders_buyer_id_fkey(name, address))'
+// สำคัญ: ต้องระบุคอลัมน์ของ orders ไว้ด้วย (order_id/status/...) ไม่เช่นนั้น
+// หน้าผู้ขายจะได้ orders ที่มีแค่ buyer ข้างใน แล้วจัดกลุ่ม/อัปเดตสถานะไม่ได้เลย
+const ORDER_ITEM_WITH_ORDER = '*, product:order_item_product_id_fkey(*), orders:order_item_order_id_fkey(order_id, order_date, status, total_amount, shipping_address, buyer:orders_buyer_id_fkey(name, address))'
 
 /**
  * ดึง order_item ทุกแถวที่ผู้ใช้ปัจจุบันมองเห็น (ชั้น RLS กรองให้เฉพาะสินค้าของผู้ขายเอง)
