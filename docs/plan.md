@@ -24,7 +24,7 @@
 | Database | PostgreSQL บน Supabase |
 | Auth | Supabase Auth (email/password) + ระบุบทบาทผ่านตาราง buyer/seller |
 
-**Supabase project**: `https://yneuoeyuvxfemavsrpci.supabase.co` (anon key พร้อมใช้)
+**Supabase project**: `https://wyiskzdaxejhvkiroadi.supabase.co` (anon key พร้อมใช้)
 
 ---
 

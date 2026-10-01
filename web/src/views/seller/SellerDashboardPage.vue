@@ -5,6 +5,7 @@ import { listProductsBySeller } from '@/api/products'
 import { listSellerAccessibleOrderItems, listOrdersByIds } from '@/api/orders'
 import { useAuthStore } from '@/stores/auth'
 import { formatTHB, formatDate, toNumber } from '@/lib/format'
+import { toast } from '@/lib/toast'
 import StatusBadge from '@/components/StatusBadge.vue'
 import Spinner from '@/components/Spinner.vue'
 import Icon from '@/components/Icon.vue'
@@ -35,7 +36,8 @@ async function load() {
     const orderIds = [...new Set(myItems.map((i) => i.order_id))]
     recentOrders.value = await listOrdersByIds(orderIds)
   } catch (e) {
-    // ปล่อยให้ค่าเริ่มต้นเป็น 0
+    // กันสับสนกับ "ร้านว่างจริง" — ถ้าโหลดล้มเหลวต้องบอก ไม่ใช่โชว์เลข 0
+    toast('โหลดข้อมูลร้านค้าไม่สำเร็จ กรุณาลองใหม่', 'error')
   } finally {
     loading.value = false
   }

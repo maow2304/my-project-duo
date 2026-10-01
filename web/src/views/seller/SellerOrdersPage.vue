@@ -45,7 +45,9 @@ async function load() {
   try {
     rawItems.value = await listSellerAccessibleOrderItems()
   } catch (e) {
+    // กันสับสนกับ "ไม่มีออเดอร์จริง" — ถ้าโหลดล้มเหลวต้องบอก ไม่ใช่โชว์ว่างเปล่า
     rawItems.value = []
+    toast('โหลดคำสั่งซื้อไม่สำเร็จ กรุณาลองใหม่', 'error')
   } finally {
     loading.value = false
   }

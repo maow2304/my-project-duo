@@ -1,12 +1,13 @@
 <script setup>
 // หน้าโปรไฟล์ (ผู้ซื้อ) - แก้ชื่อ/สถานที่ และสลับไปโหมดผู้ขายได้จากลิงก์ที่นี่
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { toast } from '@/lib/toast'
 import { hasDigit, isValidName, cleanDigits } from '@/lib/validators'
 import SiteNavbar from '@/components/SiteNavbar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
+import Spinner from '@/components/Spinner.vue'
 import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
@@ -24,7 +25,8 @@ const saving = ref(false)
 // ข้อความ error รายช่อง (แสดงใต้ input ที่เกี่ยวข้อง) - ล้างทุกครั้งที่พิมพ์
 const errors = ref({})
 
-onMounted(() => {
+// เติมฟอร์มจากโปรไฟล์ (เรียกตอนเปิดหน้า + ทุกครั้งที่โปรไฟล์เปลี่ยน เช่น กดลองใหม่แล้วผ่าน)
+function fillForm() {
   const p = auth.profile || {}
   form.value = {
     name: p.name || '',
@@ -34,7 +36,10 @@ onMounted(() => {
     places: p.places || '',
     username: p.username || '',
   }
-})
+}
+
+onMounted(fillForm)
+watch(() => auth.profile, fillForm)
 
 /** ตรวจรูปแบบข้อมูลก่อนบันทึก; คืน error รายช่อง (ช่องไหนผ่าน = เป็น "") */
 function validate() {
@@ -109,6 +114,24 @@ async function save() {
 
         <section class="space-y-4 rounded-2xl border border-stone-200 bg-white p-6" @input="errors = {}">
           <h2 class="font-semibold text-stone-800">ข้อมูลส่วนตัว</h2>
+          <div v-if="!auth.profileLoaded" class="py-8"><Spinner /></div>
+          <div v-else-if="auth.profileError" class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+            <p class="font-medium">โหลดข้อมูลโปรไฟล์ไม่สำเร็จ</p>
+            <p class="mt-1 text-xs">{{ auth.profileError }}</p>
+            <button class="mt-3 rounded-full bg-red-600 px-5 py-2 text-xs font-semibold text-white hover:bg-red-700"
+              @click="auth.reloadProfile()">
+              ลองใหม่
+            </button>
+          </div>
+          <div v-else-if="!auth.profile" class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            <p class="font-medium">ไม่พบข้อมูลโปรไฟล์ของบัญชีนี้</p>
+            <p class="mt-1 text-xs">บัญชีล็อกอินอยู่ แต่ยังไม่มีแถวโปรไฟล์ (มักเกิดตอนสมัครค้างเพราะเน็ตหลุด) กดลองใหม่ หรือล็อกเอาต์แล้วสมัครใหม่อีกครั้ง</p>
+            <button class="mt-3 rounded-full bg-amber-600 px-5 py-2 text-xs font-semibold text-white hover:bg-amber-700"
+              @click="auth.reloadProfile()">
+              ลองใหม่
+            </button>
+          </div>
+          <template v-else>
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
               <label class="mb-1.5 block text-sm font-medium text-stone-600">ชื่อผู้ใช้</label>
@@ -150,6 +173,7 @@ async function save() {
           >
             บันทึก
           </button>
+          </template>
         </section>
 
         <section v-if="auth.isBuyer" class="mt-4 flex flex-wrap gap-3">

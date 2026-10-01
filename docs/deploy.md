@@ -15,7 +15,7 @@
 - ค่า 2 ตัวจากไฟล์ `web/.env`:
   - `VITE_SUPABASE_URL`
   - `VITE_SUPABASE_ANON_KEY` (สตริงยาวๆ ขึ้นต้น `eyJ...`)
-- รัน migration ใน Supabase ให้ถึง `supabase/migrations/0005_product_variants.sql` ก่อน deploy
+- รัน migration ใน Supabase ให้ถึง `supabase/migrations/0006_rls_recursion_fix.sql` ก่อน deploy
   (ถ้าเว็บมีระบบตัวเลือกไซส์/สีแล้วแต่ฐานข้อมูลยังไม่มีตาราง `product_variant` หน้าเว็บจะพัง)
 
 > หมายเหตุ: `VITE_SUPABASE_ANON_KEY` เป็น **คีย์สาธารณะ** ใช้ฝั่งเว็บอยู่แล้ว ปลอดภัยที่จะใส่ใน Vercel
@@ -64,7 +64,7 @@
 
 | Name | Value |
 |---|---|
-| `VITE_SUPABASE_URL` | `https://yneuoeyuvxfemavsrpci.supabase.co` |
+| `VITE_SUPABASE_URL` | `https://wyiskzdaxejhvkiroadi.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | คัดลอกจาก `web/.env` บรรทัดที่ 2 |
 
 วิธีคัดลอก: เปิดไฟล์ `web/.env` → เลือกข้อความหลังเครื่องหมาย `=` บรรทัดที่ 2 → คัดลอก → วาง

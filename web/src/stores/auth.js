@@ -15,28 +15,55 @@ export const useAuthStore = defineStore('auth', () => {
   const profile = ref(null)
   const role = ref(null)
   const loading = ref(true)
+  // สถานะการโหลดโปรไฟล์: profileError = ข้อความ error ล่าสุด (null = ไม่มี error)
+  // profileLoaded = โหลดจบแล้ว (สำเร็จ / ไม่พบแถว / พังหลัง retry)
+  const profileError = ref(null)
+  const profileLoaded = ref(false)
 
   const isLoggedIn = computed(() => !!user.value)
   const isBuyer = computed(() => role.value === 'buyer')
   const isSeller = computed(() => role.value === 'seller')
   const displayName = computed(() => profile.value?.name || user.value?.email || 'ผู้ใช้งาน')
 
-  /** โหลดโปรไฟล์ตาม uid - ดูตาราง seller ก่อน ถ้าไม่เจอค่อยดู buyer */
-  async function loadProfile(uid) {
-    const seller = await getSellerProfile(uid).catch(() => null)
-    if (seller) {
-      role.value = 'seller'
-      profile.value = seller
-      return
+  /** โหลดโปรไฟล์ตาม uid - ดูตาราง seller ก่อน ถ้าไม่เจอค่อยดู buyer
+   *  แยกรัฐ 3 แบบให้หน้าบ้านแสดงถูก: โหลดพัง (network/DB) / เสร็จแต่ไม่มีแถว / สำเร็จ */
+  async function loadProfile(uid, { retry = true } = {}) {
+    profileError.value = null
+    try {
+      const seller = await getSellerProfile(uid)
+      if (seller) {
+        role.value = 'seller'
+        profile.value = seller
+        return
+      }
+      const buyer = await getBuyerProfile(uid)
+      if (buyer) {
+        role.value = 'buyer'
+        profile.value = buyer
+        return
+      }
+      role.value = null
+      profile.value = null
+    } catch (e) {
+      // โหลดล้มเหลว (เช่น เน็ตหลุดชั่วคราว) ลองใหม่อัตโนมัติ 1 ครั้งก่อนยอมแพ้
+      // เดิม catch แล้วคืน null เงียบ ๆ ทำให้โปรไฟล์ว่างค้างโดยไม่รู้สาเหตุ
+      if (retry) {
+        await new Promise((r) => setTimeout(r, 2000))
+        return loadProfile(uid, { retry: false })
+      }
+      role.value = null
+      profile.value = null
+      profileError.value = e?.message || 'โหลดข้อมูลโปรไฟล์ไม่สำเร็จ'
+    } finally {
+      profileLoaded.value = true
     }
-    const buyer = await getBuyerProfile(uid).catch(() => null)
-    if (buyer) {
-      role.value = 'buyer'
-      profile.value = buyer
-      return
-    }
-    role.value = null
-    profile.value = null
+  }
+
+  /** โหลดโปรไฟล์ใหม่ด้วย uid ปัจจุบัน (ใช้กับปุ่ม "ลองใหม่") */
+  async function reloadProfile() {
+    profileLoaded.value = false
+    if (!user.value) return
+    await loadProfile(user.value.id)
   }
 
   /** เริ่มต้นแอป: คืน session ที่มีอยู่ + ฟังการเปลี่ยนสถานะล็อกอิน */
@@ -56,6 +83,8 @@ export const useAuthStore = defineStore('auth', () => {
       } else {
         role.value = null
         profile.value = null
+        profileError.value = null
+        profileLoaded.value = false
       }
     })
   }
@@ -112,6 +141,8 @@ export const useAuthStore = defineStore('auth', () => {
     profile,
     role,
     loading,
+    profileError,
+    profileLoaded,
     isLoggedIn,
     isBuyer,
     isSeller,
@@ -121,6 +152,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     loadProfile,
+    reloadProfile,
     updateProfile,
   }
 })
