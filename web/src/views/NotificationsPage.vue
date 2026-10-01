@@ -15,6 +15,7 @@ const router = useRouter()
 const icons = {
   order: 'order',
   order_status: 'order',
+  order_placed: 'order',
   chat: 'chat',
   system: 'alert',
 }

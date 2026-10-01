@@ -3,7 +3,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { listSellerAccessibleOrderItems, updateOrderStatus } from '@/api/orders'
 import { formatTHB, formatDate, toNumber } from '@/lib/format'
-import { ORDER_STATUSES } from '@/lib/constants'
+import { ORDER_STATUSES, STATUS_LABEL } from '@/lib/constants'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from '@/lib/toast'
 import StatusBadge from '@/components/StatusBadge.vue'
@@ -102,7 +102,7 @@ onMounted(load)
           <div v-if="statusIdx(o.status) >= 0 && o.status !== 'Delivered'" class="flex items-center gap-2">
             <select :value="o.status" class="rounded-lg border border-stone-200 px-3 py-1.5 text-sm outline-none focus:border-brand-400"
               @change="updateStatus(o.order_id, $event.target.value)">
-              <option v-for="s in ORDER_STATUSES" :key="s" :value="s" :disabled="statusIdx(s) < statusIdx(o.status)">{{ s }}</option>
+              <option v-for="s in ORDER_STATUSES" :key="s" :value="s" :disabled="statusIdx(s) < statusIdx(o.status)">{{ STATUS_LABEL[s] || s }}</option>
             </select>
             <button
               v-if="statusIdx(o.status) < ORDER_STATUSES.length - 1"
@@ -110,7 +110,7 @@ onMounted(load)
               class="rounded-full bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
               @click="updateStatus(o.order_id, ORDER_STATUSES[statusIdx(o.status) + 1])"
             >
-              {{ upgrading === o.order_id ? 'กำลังอัปเดต...' : 'อัปเดตเป็น ' + ORDER_STATUSES[statusIdx(o.status) + 1] }}
+              {{ upgrading === o.order_id ? 'กำลังอัปเดต...' : 'อัปเดตเป็น ' + (STATUS_LABEL[ORDER_STATUSES[statusIdx(o.status) + 1]] || ORDER_STATUSES[statusIdx(o.status) + 1]) }}
             </button>
           </div>
           <p v-else class="text-sm text-emerald-600">ส่งมอบเสร็จสิ้น ✓</p>

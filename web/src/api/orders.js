@@ -86,7 +86,7 @@ export async function listOrdersByIds(orderIds) {
   return data || []
 }
 
-/** อัปเดตสถานะคำสั่งซื้อ เช่น Pending -> Paid (มี trigger แจ้งเตือนผู้ซื้ออัตโนมัติ) */
+/** อัปเดตสถานะคำสั่งซื้อ เช่น Pending -> Preparing (มี trigger แจ้งเตือนผู้ซื้ออัตโนมัติ) */
 export async function updateOrderStatus(orderId, status) {
   const { error } = await supabase
     .from('orders')

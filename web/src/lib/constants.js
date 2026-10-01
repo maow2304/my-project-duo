@@ -10,12 +10,12 @@
 export const PRODUCT_IMAGE_BUCKET = 'product-images'
 
 /** สถานะทั้งหมดของคำสั่งซื้อ (เรียงตามขั้นตอนจากแรกไปสุดท้าย) */
-export const ORDER_STATUSES = ['Pending', 'Paid', 'Shipped', 'Delivered']
+export const ORDER_STATUSES = ['Pending', 'Preparing', 'Shipped', 'Delivered']
 
 /** ข้อความภาษาไทยที่แสดงแทนสถานะ (key ตรงกับค่า status ในตาราง orders) */
 export const STATUS_LABEL = {
-  Pending: 'รอการยืนยัน',
-  Paid: 'ชำระแล้ว',
+  Pending: 'รอดำเนินการ',
+  Preparing: 'จัดเตรียมสินค้า',
   Shipped: 'จัดส่งแล้ว',
   Delivered: 'ส่งมอบแล้ว',
 }
@@ -23,7 +23,7 @@ export const STATUS_LABEL = {
 /** คลาส Tailwind สีของแต่ละสถานะ (ใช้ใน component StatusBadge) */
 export const STATUS_STYLES = {
   Pending: 'bg-amber-50 text-amber-700 ring-amber-200',
-  Paid: 'bg-blue-50 text-blue-700 ring-blue-200',
+  Preparing: 'bg-blue-50 text-blue-700 ring-blue-200',
   Shipped: 'bg-violet-50 text-violet-700 ring-violet-200',
   Delivered: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
 }
