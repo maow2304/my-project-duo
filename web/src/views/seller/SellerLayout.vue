@@ -97,7 +97,14 @@ onBeforeUnmount(() => {})
       </button>
       <span class="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-xs font-bold text-white">UP</span>
       <p class="font-bold">Cloth<span class="text-brand-600">Market</span> <span class="text-xs font-normal text-stone-400">· ผู้ขาย</span></p>
-      <button class="ml-auto grid h-10 w-10 place-items-center rounded-full text-stone-600 hover:bg-stone-100" @click="router.push({ name: 'seller-notifications' })">
+      <button class="ml-auto grid h-10 w-10 place-items-center rounded-full text-stone-600 hover:bg-stone-100" title="แชทกับลูกค้า"
+        @click="router.push({ name: 'seller-chats' })">
+        <span class="relative">
+          <Icon name="chat" />
+          <span v-if="chat.unreadChatCount > 0" class="absolute -right-1.5 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{{ chat.unreadChatCount > 9 ? '9+' : chat.unreadChatCount }}</span>
+        </span>
+      </button>
+      <button class="grid h-10 w-10 place-items-center rounded-full text-stone-600 hover:bg-stone-100" @click="router.push({ name: 'seller-notifications' })">
         <span class="relative">
           <Icon name="bell" />
           <span v-if="notif.unreadCount > 0" class="absolute -right-1.5 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{{ notif.unreadCount > 9 ? '9+' : notif.unreadCount }}</span>

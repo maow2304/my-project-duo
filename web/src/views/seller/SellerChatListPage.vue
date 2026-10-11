@@ -4,7 +4,6 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
-import SellerLayout from './SellerLayout.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Icon from '@/components/Icon.vue'
 import { formatDate } from '@/lib/format'
@@ -26,7 +25,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <SellerLayout>
+  <!-- หมายเหตุ: ไม่ห่อ SellerLayout ซ้ำ เพราะ route /seller ใส่ layout ให้อยู่แล้ว
+    (หน้าอื่นที่ใช้งานได้ใช้โครงนี้ ห่อซ้ำทำให้ layout ซ้อนกัน) -->
+  <div>
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-stone-800">แชทกับลูกค้า</h1>
       <p class="text-sm text-stone-500">ตอบแชทจากผู้ซื้อที่สนใจสินค้าของคุณ</p>
@@ -54,5 +55,5 @@ onMounted(() => {
         <Icon name="chevron-right" class="shrink-0 text-stone-300" />
       </button>
     </div>
-  </SellerLayout>
+  </div>
 </template>
