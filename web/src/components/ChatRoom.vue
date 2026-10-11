@@ -29,6 +29,13 @@ const scroller = ref(null)
 const myId = computed(() => auth.user?.id)
 // คู่สนทนา = คนในห้องที่ไม่ได้เป็นเรา
 const party = computed(() => (convo.value && myId.value ? chat.otherParty(convo.value, myId.value) : null))
+// ชื่อที่โชว์: มีชื่อจริงใช้ชื่อจริง ไม่มีใช้ป้ายบทบาท (RLS อ่านชื่อคู่สนทนาไม่ได้ถ้าไม่มี policy)
+// ถ้าวันหลังมี policy แล้ว ชื่อจริงจะขึ้นเองโดยไม่ต้องแก้โค้ด
+const partyLabel = computed(() => {
+  if (party.value?.name) return party.value.name
+  if (!convo.value || !myId.value) return 'ผู้ใช้งาน'
+  return convo.value.buyer_id === myId.value ? 'ร้านค้า' : 'ลูกค้า'
+})
 const messages = computed(() => chat.messages[props.conversationId] || [])
 
 async function load() {
@@ -49,6 +56,8 @@ async function load() {
     loadError.value = 'โหลดข้อความไม่สำเร็จ กรุณาลองเข้าใหม่'
   }
   channel = chat.subscribeToMessages(props.conversationId, scrollDown)
+  // polling สำรองทุก 3 วิ (ใช้แทน realtime ชั่วคราวโดยไม่ต้องแก้ DB)
+  chat.startRoomPolling(props.conversationId)
   loading.value = false
   scrollDown()
 }
@@ -97,6 +106,7 @@ watch(
 )
 onBeforeUnmount(() => {
   if (chat.activeConversationId === props.conversationId) chat.activeConversationId = null
+  chat.stopRoomPolling()
   if (channel) supabase.removeChannel(channel)
 })
 </script>
@@ -104,11 +114,11 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
     <header v-if="convo" class="flex items-center gap-3 border-b border-stone-100 px-4 py-3">
-      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-100 font-bold text-brand-700">
-        {{ party?.name?.charAt(0) || '?' }}
-      </span>
-      <div class="flex-1">
-        <p class="font-medium">{{ party?.name || 'ผู้ใช้งาน' }}</p>
+<span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-100 font-bold text-brand-700">
+          {{ partyLabel.charAt(0) }}
+        </span>
+        <div class="flex-1">
+          <p class="font-medium">{{ partyLabel }}</p>
         <p v-if="convo.product" class="text-xs text-stone-400">
           สินค้า: {{ convo.product.product_name || 'สินค้า' }}
         </p>

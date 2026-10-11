@@ -50,10 +50,10 @@ onMounted(() => {
               @click="activeId = c.id"
             >
               <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-stone-100 font-bold text-stone-500">
-                {{ chat.otherParty(c, myId)?.name?.charAt(0) || '?' }}
+                {{ chat.otherParty(c, myId)?.name?.charAt(0) || 'ร' }}
               </span>
               <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium text-stone-700">{{ chat.otherParty(c, myId)?.name }}</p>
+                <p class="truncate text-sm font-medium text-stone-700">{{ chat.otherParty(c, myId)?.name || 'ร้านค้า' }}</p>
                 <p class="truncate text-xs text-stone-400">{{ c.last_message?.content || 'เริ่มสนทนา' }}</p>
               </div>
               <span v-if="c.product" class="shrink-0 text-xs text-stone-400">{{ c.product.product_name || 'สินค้า' }}</span>

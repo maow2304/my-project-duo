@@ -113,5 +113,6 @@ Admin, ชำระเงินจริง, จัดส่ง/ติดตา�
 - `docs/validation.md` — กฎการตรวจช่องกรอก + การกันข้อมูลผิดรูป
 - `docs/trigger-report.md` (+ `.pdf`) — รายงาน Trigger ในฐานข้อมูล
 - `docs/function-report.md` (+ `.pdf`) — รายงาน SQL Function ในฐานข้อมูล
+- `docs/procedure-report.md` (+ `.pdf`) — รายงาน Stored Procedure (พบ 0 ตัว + ออกแบบ candidate)
 - `docs/CONTRIBUTING.md` — แนวทางการเขียนโค้ดในโปรเจกต์
 - `docs/er-diagram.drawio` — ER diagram ฐานข้อมูล (เปิดด้วย draw.io)

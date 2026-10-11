@@ -26,6 +26,9 @@ export const useChatStore = defineStore('chat', () => {
   const unreadByRoom = ref({})
   let incomingChannel = null
   let incomingUid = null
+  let pollTimer = null
+  let pollRoomId = null
+  let pollBusy = false
 
   /** จำนวนข้อความใหม่ที่ยังไม่อ่านรวมทุกห้อง (ใช้ติด badge ที่เมนูแชท) */
   const unreadChatCount = computed(() =>
@@ -133,6 +136,35 @@ export const useChatStore = defineStore('chat', () => {
     if (unreadByRoom.value[conversationId]) delete unreadByRoom.value[conversationId]
   }
 
+  /** เริ่ม polling ดึงข้อความห้องนี้ทุก 3 วิ (ใช้แทน realtime ชั่วคราวโดยไม่ต้องแก้ DB)
+   *  - ยิงเฉพาะตอนแท็บเปิดอยู่ (document.visibilityState) เพื่อประหยัด request
+   *  - ข้ามรอบถ้ารอบก่อนยังโหลดไม่เสร็จ (กันยิงซ้อนตอนเน็ตช้า) */
+  function startRoomPolling(conversationId) {
+    stopRoomPolling()
+    pollRoomId = conversationId
+    pollTimer = setInterval(async () => {
+      if (!pollRoomId || document.visibilityState !== 'visible' || pollBusy) return
+      pollBusy = true
+      try {
+        await loadMessages(pollRoomId)
+      } catch {
+        // เงียบไว้ รอบหน้าลองใหม่ (มีจอ error กลางของแอปดักกรณีร้ายแรงอยู่แล้ว)
+      } finally {
+        pollBusy = false
+      }
+    }, 3000)
+  }
+
+  /** หยุด polling (เรียกตอนออกจากห้อง/เปลี่ยนห้อง) */
+  function stopRoomPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer)
+      pollTimer = null
+    }
+    pollRoomId = null
+    pollBusy = false
+  }
+
   /** ล้าง state เมื่อออกจากระบบ */
   function reset() {
     conversations.value = []
@@ -141,6 +173,7 @@ export const useChatStore = defineStore('chat', () => {
     activeConversationId.value = null
     unreadByRoom.value = {}
     incomingUid = null
+    stopRoomPolling()
     if (incomingChannel) {
       supabase.removeChannel(incomingChannel)
       incomingChannel = null
@@ -162,6 +195,8 @@ export const useChatStore = defineStore('chat', () => {
     subscribeToMessages,
     subscribeToIncoming,
     markRoomRead,
+    startRoomPolling,
+    stopRoomPolling,
     reset,
   }
 })
