@@ -1,6 +1,6 @@
 <script setup>
 // รายการแชท (ผู้ขาย) - โหลดเฉพาะแชทของร้านตัวเอง แล้วกดเข้าไปตอบได้
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
@@ -13,11 +13,16 @@ const auth = useAuthStore()
 const chat = useChatStore()
 const router = useRouter()
 
+// id ตัวเองแบบกัน null (ถ้าหลุดล็อกอินกลางคัน หน้าจะไม่พัง แค่ไม่โหลดรายการ)
+const myId = computed(() => auth.user?.id)
+
 function open(convoId) {
   router.push({ name: 'seller-chat-room', params: { id: convoId } })
 }
 
-onMounted(() => chat.listConversations(auth.user.id).catch(() => {}))
+onMounted(() => {
+  if (myId.value) chat.listConversations(myId.value).catch(() => {})
+})
 </script>
 
 <template>
@@ -36,11 +41,11 @@ onMounted(() => chat.listConversations(auth.user.id).catch(() => {}))
         @click="open(c.id)"
       >
         <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-100 font-bold text-brand-700">
-          {{ chat.otherParty(c, auth.user.id)?.name?.charAt(0) || '?' }}
+          {{ chat.otherParty(c, myId)?.name?.charAt(0) || '?' }}
         </span>
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
-            <p class="truncate font-medium text-stone-700">{{ chat.otherParty(c, auth.user.id)?.name }}</p>
+            <p class="truncate font-medium text-stone-700">{{ chat.otherParty(c, myId)?.name }}</p>
             <span v-if="c.product" class="truncate rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">{{ c.product.product_name || 'สินค้า' }}</span>
           </div>
           <p class="mt-0.5 truncate text-sm text-stone-400">{{ c.last_message?.content || 'ยังไม่มีข้อความ' }}</p>

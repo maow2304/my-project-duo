@@ -16,6 +16,9 @@ const router = useRouter()
 
 const activeId = ref(null)
 
+// id ตัวเองแบบกัน null (ถ้าหลุดล็อกอินกลางคัน หน้าจะไม่พัง แค่ไม่โหลดรายการ)
+const myId = computed(() => auth.user?.id)
+
 const activeConvo = computed(() => chat.conversations.find((c) => c.id === activeId.value))
 
 function openProduct() {
@@ -24,7 +27,9 @@ function openProduct() {
   }
 }
 
-onMounted(() => chat.listConversations(auth.user.id).catch(() => {}))
+onMounted(() => {
+  if (myId.value) chat.listConversations(myId.value).catch(() => {})
+})
 </script>
 
 <template>
@@ -45,10 +50,10 @@ onMounted(() => chat.listConversations(auth.user.id).catch(() => {}))
               @click="activeId = c.id"
             >
               <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-stone-100 font-bold text-stone-500">
-                {{ chat.otherParty(c, auth.user.id)?.name?.charAt(0) || '?' }}
+                {{ chat.otherParty(c, myId)?.name?.charAt(0) || '?' }}
               </span>
               <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium text-stone-700">{{ chat.otherParty(c, auth.user.id)?.name }}</p>
+                <p class="truncate text-sm font-medium text-stone-700">{{ chat.otherParty(c, myId)?.name }}</p>
                 <p class="truncate text-xs text-stone-400">{{ c.last_message?.content || 'เริ่มสนทนา' }}</p>
               </div>
               <span v-if="c.product" class="shrink-0 text-xs text-stone-400">{{ c.product.product_name || 'สินค้า' }}</span>

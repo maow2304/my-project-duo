@@ -13,6 +13,8 @@ import { toast } from '@/lib/toast'
 /** true เมื่อโหลดหน้า (lazy chunk) ล้มเหลวล่าสุด — App.vue ใช้โชว์ปุ่มลองใหม่
  *  กันเคสหน้าขาวเปล่าโดยไม่มีอะไรบอก (เช่น เน็ตสะดุด หรือ AdBlock บล็อกไฟล์) */
 export const routeLoadError = ref(false)
+/** ข้อความอธิบายบนจอกู้คืน (เคส chunk มีข้อความเฉพาะของมัน) */
+export const routeLoadErrorMessage = ref('')
 
 /** ตรวจว่าเป็น error จากการโหลด lazy chunk หรือไม่ (ดูจาก message มาตรฐานของ bundler) */
 function isChunkLoadError(err) {
@@ -94,6 +96,8 @@ router.beforeEach((to) => {
 router.onError((err) => {
   if (isChunkLoadError(err)) {
     routeLoadError.value = true
+    routeLoadErrorMessage.value =
+      'อาจเกิดจากเน็ตสะดุด หรือส่วนขยายเบราว์เซอร์ (เช่น AdBlock) บล็อกไฟล์ของหน้านี้ไว้ ลองปิดส่วนขยายแล้วโหลดใหม่'
     toast('โหลดหน้าไม่สำเร็จ กรุณากด “โหลดใหม่” (ถ้าใช้ AdBlock ลองปิดแล้วลองอีกครั้ง)', 'error')
   }
 })
@@ -101,6 +105,7 @@ router.onError((err) => {
 // นำทางสำเร็จให้ล้างสถานะ error (กัน overlay ค้างหลังกดย้อนกลับ/ไปหน้าอื่น)
 router.afterEach(() => {
   routeLoadError.value = false
+  routeLoadErrorMessage.value = ''
 })
 
 export default router
