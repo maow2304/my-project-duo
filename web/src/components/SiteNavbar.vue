@@ -84,12 +84,12 @@ onUnmounted(() => {})
           >{{ notif.unreadCount > 9 ? '9+' : notif.unreadCount }}</span>
         </button>
 
-        <!-- chat -->
+        <!-- chat (ผู้ซื้อ -> ห้องแชทผู้ซื้อ, ผู้ขาย -> ห้องแชทผู้ขาย) -->
         <button
-          v-if="auth.isBuyer"
+          v-if="auth.isLoggedIn"
           class="relative grid h-10 w-10 place-items-center rounded-full text-stone-600 transition hover:bg-stone-100"
-          title="แชทกับผู้ขาย"
-          @click="router.push({ name: 'buyer-chats' })"
+          :title="auth.isSeller ? 'แชทกับลูกค้า' : 'แชทกับผู้ขาย'"
+          @click="router.push(auth.isSeller ? { name: 'seller-chats' } : { name: 'buyer-chats' })"
         >
           <Icon name="chat" />
           <span
