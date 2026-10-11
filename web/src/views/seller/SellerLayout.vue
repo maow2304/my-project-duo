@@ -136,6 +136,7 @@ onBeforeUnmount(() => {})
             <Icon :name="n.icon" :size="18" />
             {{ n.label }}
             <span v-if="n.badge && notif.unreadCount > 0" class="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold">{{ notif.unreadCount }}</span>
+            <span v-else-if="n.chatBadge && chat.unreadChatCount > 0" class="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold">{{ chat.unreadChatCount > 9 ? '9+' : chat.unreadChatCount }}</span>
           </button>
         </nav>
         <button class="mt-6 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-red-400 hover:bg-stone-800"

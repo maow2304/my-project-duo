@@ -6,7 +6,19 @@
 // ============================================================================
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { toast } from '@/lib/toast'
+
+/** true เมื่อโหลดหน้า (lazy chunk) ล้มเหลวล่าสุด — App.vue ใช้โชว์ปุ่มลองใหม่
+ *  กันเคสหน้าขาวเปล่าโดยไม่มีอะไรบอก (เช่น เน็ตสะดุด หรือ AdBlock บล็อกไฟล์) */
+export const routeLoadError = ref(false)
+
+/** ตรวจว่าเป็น error จากการโหลด lazy chunk หรือไม่ (ดูจาก message มาตรฐานของ bundler) */
+function isChunkLoadError(err) {
+  const msg = String(err?.message || '')
+  return /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk [\w-]+ failed|Loading CSS chunk/i.test(msg)
+}
 
 const routes = [
   {
@@ -77,6 +89,18 @@ router.beforeEach((to) => {
   }
 
   return true
+})
+
+router.onError((err) => {
+  if (isChunkLoadError(err)) {
+    routeLoadError.value = true
+    toast('โหลดหน้าไม่สำเร็จ กรุณากด “โหลดใหม่” (ถ้าใช้ AdBlock ลองปิดแล้วลองอีกครั้ง)', 'error')
+  }
+})
+
+// นำทางสำเร็จให้ล้างสถานะ error (กัน overlay ค้างหลังกดย้อนกลับ/ไปหน้าอื่น)
+router.afterEach(() => {
+  routeLoadError.value = false
 })
 
 export default router

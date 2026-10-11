@@ -111,5 +111,7 @@ Admin, ชำระเงินจริง, จัดส่ง/ติดตา�
 - `docs/สรุปสิ่งที่จะทำ.md` — สรุปฉบับสั้น
 - `docs/deploy.md` — วิธี deploy ขึ้น Vercel + แชร์ให้คนอื่นเทส
 - `docs/validation.md` — กฎการตรวจช่องกรอก + การกันข้อมูลผิดรูป
+- `docs/trigger-report.md` (+ `.pdf`) — รายงาน Trigger ในฐานข้อมูล
+- `docs/function-report.md` (+ `.pdf`) — รายงาน SQL Function ในฐานข้อมูล
 - `docs/CONTRIBUTING.md` — แนวทางการเขียนโค้ดในโปรเจกต์
 - `docs/er-diagram.drawio` — ER diagram ฐานข้อมูล (เปิดด้วย draw.io)
