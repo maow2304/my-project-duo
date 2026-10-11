@@ -37,6 +37,7 @@ docs/                     ← plan.md, CONTRIBUTING.md, สรุปสิ่ง
    - `supabase/migrations/0006_rls_recursion_fix.sql` — แก้วงจร RLS orders/order_item (42P17)
    - `supabase/migrations/0007_order_shipping_address.sql` — ที่อยู่จัดส่งในออเดอร์ + ผู้ขายดูที่อยู่ลูกค้าได้
    - `supabase/migrations/0008_order_status_pipeline.sql` — สายสถานะใหม่ + แจ้งเตือนผู้ซื้อตอนสั่ง
+   - `supabase/migrations/0009_chat_message_notify.sql` — แจ้งเตือนข้อความแชท + ลิงก์เข้าห้อง
 3. **Auth → Providers → Email**: ปิด "Confirm email" (เพื่อให้สมัครแล้วเข้าสู่ระบบได้ทันที) — *ไม่บังคับ แต่แนะนำ*
 4. **Realtime**: บนตาราง `messages` และ `notifications` เปิด Realtime ไว้ (ค่าเริ่มต้นของ Supabase เปิดให้อยู่แล้ว)
 5. ใส่ value ใน `web/.env`:
@@ -111,3 +112,4 @@ Admin, ชำระเงินจริง, จัดส่ง/ติดตา�
 - `docs/deploy.md` — วิธี deploy ขึ้น Vercel + แชร์ให้คนอื่นเทส
 - `docs/validation.md` — กฎการตรวจช่องกรอก + การกันข้อมูลผิดรูป
 - `docs/CONTRIBUTING.md` — แนวทางการเขียนโค้ดในโปรเจกต์
+- `docs/er-diagram.drawio` — ER diagram ฐานข้อมูล (เปิดด้วย draw.io)

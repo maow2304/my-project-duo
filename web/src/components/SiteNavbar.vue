@@ -6,11 +6,13 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useNotificationStore } from '@/stores/notification'
+import { useChatStore } from '@/stores/chat'
 import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
 const cart = useCartStore()
 const notif = useNotificationStore()
+const chat = useChatStore()
 const router = useRouter()
 const route = useRoute()
 
@@ -40,6 +42,7 @@ onMounted(async () => {
     if (auth.isBuyer) cart.loadCart(auth.user.id).catch(() => {})
     notif.load().catch(() => {})
     notif.subscribe()
+    chat.subscribeToIncoming(auth.user.id)
   }
 })
 onUnmounted(() => {})
@@ -89,6 +92,10 @@ onUnmounted(() => {})
           @click="router.push({ name: 'buyer-chats' })"
         >
           <Icon name="chat" />
+          <span
+            v-if="chat.unreadChatCount > 0"
+            class="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+          >{{ chat.unreadChatCount > 9 ? '9+' : chat.unreadChatCount }}</span>
         </button>
 
         <!-- cart -->

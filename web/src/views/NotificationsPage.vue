@@ -2,6 +2,7 @@
 // หน้ารายการแจ้งเตือน (ผู้ซื้อ) - โหลดรายการ + กดอ่านทิ้งรายครั้ง/ทีเดียว
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
 import { formatDate } from '@/lib/format'
 import SiteNavbar from '@/components/SiteNavbar.vue'
@@ -10,6 +11,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import Icon from '@/components/Icon.vue'
 
 const notif = useNotificationStore()
+const auth = useAuthStore()
 const router = useRouter()
 
 const icons = {
@@ -18,6 +20,18 @@ const icons = {
   order_placed: 'order',
   chat: 'chat',
   system: 'alert',
+}
+
+/** กดแจ้งเตือน: ถ้าเป็นแชทให้เด้งเข้าห้องตามบทบาท นอกนั้นแค่อ่าน */
+function openNotif(n) {
+  notif.markRead(n.id)
+  if (n.type === 'chat' && n.link) {
+    router.push(
+      auth.isSeller
+        ? { name: 'seller-chat-room', params: { id: n.link } }
+        : { name: 'buyer-chat-room', params: { id: n.link } }
+    )
+  }
 }
 
 onMounted(async () => {
@@ -50,7 +64,7 @@ onMounted(async () => {
             :key="n.id"
             class="flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition"
             :class="n.is_read ? 'border-stone-200 bg-white' : 'border-brand-200 bg-brand-50/60'"
-            @click="notif.markRead(n.id)"
+            @click="openNotif(n)"
           >
             <span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.is_read ? 'bg-stone-100 text-stone-400' : 'bg-brand-600 text-white'">
               <Icon :name="icons[n.type] || 'alert'" :size="16" />

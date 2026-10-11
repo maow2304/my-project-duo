@@ -1,6 +1,6 @@
 <script setup>
 // คอมโพเนนต์ห้องแชท - แสดงข้อความและส่งข้อความได้ (ใช้ทั้งฝั่งผู้ซื้อ/ผู้ขาย)
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { getConversationById } from '@/api/chat'
@@ -34,6 +34,9 @@ const messages = computed(() => chat.messages[props.conversationId] || [])
 async function load() {
   loading.value = true
   loadError.value = ''
+  // เปิดห้องนี้แล้ว: ไม่ต้องเตือนซ้ำ + ล้างนับ unread ของห้องนี้
+  chat.activeConversationId = props.conversationId
+  chat.markRoomRead(props.conversationId)
   try {
     convo.value = await getConversationById(props.conversationId)
   } catch (e) {
@@ -81,7 +84,19 @@ function onKey(e) {
 }
 
 onMounted(load)
+// กันกรณีเปลี่ยนห้องโดย component ไม่ถูกสร้างใหม่ (id เปลี่ยนแต่หน้าเดิม)
+watch(
+  () => props.conversationId,
+  () => {
+    if (channel) {
+      supabase.removeChannel(channel)
+      channel = null
+    }
+    load()
+  }
+)
 onBeforeUnmount(() => {
+  if (chat.activeConversationId === props.conversationId) chat.activeConversationId = null
   if (channel) supabase.removeChannel(channel)
 })
 </script>

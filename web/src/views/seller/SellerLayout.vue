@@ -5,10 +5,12 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
+import { useChatStore } from '@/stores/chat'
 import Icon from '@/components/Icon.vue'
 
 const auth = useAuthStore()
 const notif = useNotificationStore()
+const chat = useChatStore()
 const router = useRouter()
 
 const mobileOpen = ref(false)
@@ -17,7 +19,7 @@ const nav = [
   { label: 'แดชบอร์ด', name: 'seller-dashboard', icon: 'home' },
   { label: 'จัดการสินค้า', name: 'seller-products', icon: 'bag' },
   { label: 'คำสั่งซื้อ', name: 'seller-orders', icon: 'order' },
-  { label: 'แชท', name: 'seller-chats', icon: 'chat' },
+  { label: 'แชท', name: 'seller-chats', icon: 'chat', chatBadge: true },
   { label: 'การแจ้งเตือน', name: 'seller-notifications', icon: 'bell', badge: true },
   { label: 'โปรไฟล์', name: 'seller-profile', icon: 'user' },
 ]
@@ -30,6 +32,7 @@ function go(name) {
 onMounted(() => {
   notif.load().catch(() => {})
   notif.subscribe()
+  if (auth.user?.id) chat.subscribeToIncoming(auth.user.id)
 })
 onBeforeUnmount(() => {})
 </script>
@@ -58,6 +61,9 @@ onBeforeUnmount(() => {})
             <Icon :name="n.icon" :size="18" />
             <span v-if="n.badge && notif.unreadCount > 0" class="absolute -right-1.5 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
               {{ notif.unreadCount > 9 ? '9+' : notif.unreadCount }}
+            </span>
+            <span v-else-if="n.chatBadge && chat.unreadChatCount > 0" class="absolute -right-1.5 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+              {{ chat.unreadChatCount > 9 ? '9+' : chat.unreadChatCount }}
             </span>
           </span>
           {{ n.label }}

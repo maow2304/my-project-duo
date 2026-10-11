@@ -4,8 +4,9 @@
 // ============================================================================
 
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
+import { toast } from '@/lib/toast'
 // ใช้ alias (apiListConversations / apiSendMessage) เพราะใน store มี function
 // ชื่อ listConversations / sendMessage เหมือนกัน ถ้า import ชื่อชนจะเรียกตัวมันเอง (infinite recursion)
 import {
@@ -19,6 +20,17 @@ export const useChatStore = defineStore('chat', () => {
   const conversations = ref([])
   const loaded = ref(false)
   const messages = ref({}) // map: conversationId -> array ข้อความ
+  // ห้องที่เปิดดูอยู่ตอนนี้ (เปิดอยู่ไม่ต้องเตือนซ้ำ) + ข้อความใหม่ที่ยังไม่เปิดอ่านรายห้อง
+  // หมายเหตุ: นับเฉพาะใน session นี้ (รีเฟรชแล้วหาย) เพราะไม่มีคอลัมน์เก็บสถานะอ่านใน DB
+  const activeConversationId = ref(null)
+  const unreadByRoom = ref({})
+  let incomingChannel = null
+  let incomingUid = null
+
+  /** จำนวนข้อความใหม่ที่ยังไม่อ่านรวมทุกห้อง (ใช้ติด badge ที่เมนูแชท) */
+  const unreadChatCount = computed(() =>
+    Object.values(unreadByRoom.value).reduce((s, n) => s + Number(n || 0), 0)
+  )
 
   /** หาหรือสร้างห้องแชท (ดู api/chat.js) - คืน null ถ้าแชทกับตัวเอง */
   async function getOrCreate(args) {
@@ -74,23 +86,82 @@ export const useChatStore = defineStore('chat', () => {
       .subscribe()
   }
 
+  /** เริ่มฟังข้อความใหม่ทุกห้องของเรา (เรียกครั้งเดียวหลังล็อกอิน)
+   *  ถ้าเปลี่ยนผู้ใช้จะถอด channel เก่าแล้วสมัครใหม่ให้เอง */
+  function subscribeToIncoming(uid) {
+    if (!uid) return
+    if (incomingChannel && incomingUid === uid) return
+    if (incomingChannel) {
+      supabase.removeChannel(incomingChannel)
+      incomingChannel = null
+    }
+    incomingUid = uid
+    incomingChannel = supabase
+      .channel('messages-incoming')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        async (payload) => {
+          await handleIncoming(uid, payload?.new)
+        }
+      )
+      .subscribe()
+  }
+
+  /** ตรวจข้อความใหม่: ไม่ใช่ของเรา + ไม่ได้เปิดห้องนั้นอยู่ -> toast + นับ unread */
+  async function handleIncoming(uid, msg) {
+    if (!msg || !msg.id || !msg.conversation_id) return
+    if (msg.sender_id === uid) return // ข้อความตัวเอง (เช่น เปิดอีกแท็บ) ไม่เตือน
+    if (String(msg.conversation_id) === String(activeConversationId.value)) return // เปิดห้องนี้อยู่เห็นเอง
+    if (!conversations.value.some((c) => String(c.id) === String(msg.conversation_id))) {
+      // ห้องใหม่อาจยังไม่โหลด (เพิ่งมีคนทักครั้งแรก) โหลดรายการใหม่ก่อน
+      try {
+        await listConversations(uid)
+      } catch {
+        return
+      }
+      if (!conversations.value.some((c) => String(c.id) === String(msg.conversation_id))) return
+    }
+    unreadByRoom.value[msg.conversation_id] = (unreadByRoom.value[msg.conversation_id] || 0) + 1
+    const convo = conversations.value.find((c) => String(c.id) === String(msg.conversation_id))
+    const name = otherParty(convo, uid)?.name || 'คู่สนทนา'
+    toast(`ข้อความใหม่จาก ${name}`, 'info')
+  }
+
+  /** เปิดห้องแล้ว: เลิกนับ unread ของห้องนั้น */
+  function markRoomRead(conversationId) {
+    if (unreadByRoom.value[conversationId]) delete unreadByRoom.value[conversationId]
+  }
+
   /** ล้าง state เมื่อออกจากระบบ */
   function reset() {
     conversations.value = []
     messages.value = {}
     loaded.value = false
+    activeConversationId.value = null
+    unreadByRoom.value = {}
+    incomingUid = null
+    if (incomingChannel) {
+      supabase.removeChannel(incomingChannel)
+      incomingChannel = null
+    }
   }
 
   return {
     conversations,
     loaded,
     messages,
+    activeConversationId,
+    unreadByRoom,
+    unreadChatCount,
     getOrCreate,
     listConversations,
     otherParty,
     loadMessages,
     sendMessage,
     subscribeToMessages,
+    subscribeToIncoming,
+    markRoomRead,
     reset,
   }
 })
